@@ -37,7 +37,7 @@ object HoodConstants {
     object Configuration {
         private const val INVERTED = false
 
-        val range = Angle(0.0)..Angle.fromDegrees(270.0)
+        val range = Angle(0.0)..Angle.fromDegrees(360.0)
 
         val hoodServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(INVERTED)

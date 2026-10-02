@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.utils.Alliance
 
 abstract class MirroredPoseFactory(unit: AngleUnit, alliance: Alliance) {
 
-    val poseFactory: PoseFactory = when (unit) {
+    protected val poseFactory: PoseFactory = when (unit) {
         AngleUnit.DEGREES -> if (alliance == Alliance.RED) {
             PoseFactory.degrees().mirrorY(70.75).mirrorX(70.75)
         } else { PoseFactory.degrees() }

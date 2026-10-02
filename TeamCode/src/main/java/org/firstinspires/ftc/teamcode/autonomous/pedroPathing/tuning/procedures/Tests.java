@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures;
+package org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures;
 
 import com.pedropathing.algorithm.Algorithm;
 import com.pedropathing.drivetrain.DrivePowers;

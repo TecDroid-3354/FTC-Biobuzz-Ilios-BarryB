@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems.mecanum
 
+import com.pedropathing.api.Paths
 import com.pedropathing.follower.Follower
 import com.pedropathing.follower.ManualDrive
 import com.pedropathing.math.Pose
@@ -10,28 +11,29 @@ import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import com.seattlesolvers.solverslib.geometry.Pose2d
 import com.seattlesolvers.solverslib.geometry.Rotation2d
+import com.seattlesolvers.solverslib.geometry.Transform2d
 import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.seattlesolvers.solverslib.geometry.Vector2d
 import com.seattlesolvers.solverslib.kinematics.wpilibkinematics.ChassisSpeeds
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D
-import org.firstinspires.ftc.teamcode.autonomous.paths.examplePaths.Line
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
+import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
-import org.firstinspires.ftc.teamcode.utils.extensions.h
-import org.firstinspires.ftc.teamcode.utils.extensions.toPose2D
+import org.firstinspires.ftc.teamcode.utils.extensions.toPedroPose
 import org.firstinspires.ftc.teamcode.utils.extensions.toPose2d
-import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.LinearVelocity
 import java.util.Optional
 import kotlin.math.atan2
+import kotlin.math.hypot
 
 class Mecanum(
     private val follower: Follower,
     private val controller: GamepadEx,
     private val alliance: Alliance
-): SubsystemBase() {
+): SubsystemBase(), Limelight.VisionConsumer {
 
     /**
      * Runs in every loop. Follower and telemetry get updated
@@ -45,18 +47,22 @@ class Mecanum(
      * The axis get multiplied by each [MecanumConstants.Control] Multiplier and its respective alliance multiplier.
      * @return a [RunCommand] which set the [Follower]'s TeleOp drive to the [controller]'s axis.
      */
-    fun driveFollowingDriverInput(): Command {
+    fun driveFollowingScaledDriverInput(driveScalar: Optional<Double>, headingScalar: Optional<Double>): Command {
         return RunCommand({
             val fieldCentricDrive = ManualDrive.fieldCentric(
-                -controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier,
-                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier,
-                controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER,
+                -controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar.orElse(1.0),
                 follower.pose().heading()
             )
 
             follower.manual(fieldCentricDrive)
         })
             .addRequirements(this)
+    }
+
+    fun driveFollowingDriverInput(): Command {
+        return driveFollowingScaledDriverInput(Optional.empty(), Optional.empty())
     }
 
     /**
@@ -141,26 +147,27 @@ class Mecanum(
      * Constructs a vector from the robot to a target and returns its angle plus an [Optional] [Rotation2d]
      * @return the angle of the vector plus the offset
      */
-    fun getAngleFromRobotToTarget(fieldToTarget: Translation2d, headingOffset: Optional<Rotation2d>): Angle {
+    fun getAngleFromRobotToTarget(fieldToTarget: Translation2d): Rotation2d {
         val robotToTargetVector = fieldToTarget.minus(getPose().translation)
 
         val targetAngle = Rotation2d(
             atan2(robotToTargetVector.y, robotToTargetVector.x)
-        ).plus(headingOffset.orElse(Rotation2d()))
+        )
 
-        return Angle.fromRadians(targetAngle.radians)
+        return targetAngle
     }
 
-    /**
-     * Gets the distance of the chassis to any target passed to this function.
-     * Uses the [Pose.distance] method to calculate the distance.
-     * @param target the target to get the distance from
-     * @return the distance from the robot's center to the specified [target]
-     */
-    fun getDistanceTo(target: Pose): Distance {
-        val distance = follower.pose().distance(target)
+    fun followPathToTargetFieldPosition(targetPose: Pose2d, holdEnd: Boolean, maxPower: Double): Command {
+        // TODO Check if the Instant Command works, if not, change to Run Command
+        val currentPosePedro = getPose().toPedroPose()
+        val targetPosePedro = targetPose.toPedroPose()
+        val targetHeadingPedro = Pose(currentPosePedro.x(), currentPosePedro.y(),targetPosePedro.heading())
 
-        return Distance.fromInches(distance)
+        val path = Paths.curve(currentPosePedro, targetHeadingPedro, targetPosePedro)
+
+        return FollowPathCommand(follower, path, holdEnd, maxPower)
+            .addRequirements(this)
+            .beforeStarting(Runnable { follower.stop() })
     }
 
     fun followPathCMD(path: Path, holdEnd: Boolean, maxPower: Double): Command {
@@ -174,5 +181,17 @@ class Mecanum(
      */
     fun setPose(pose: Pose) {
         follower.setPose(pose)
+    }
+
+    override fun accept(estimatedPose: Pose) {
+        val currentPose = getPose().toPedroPose()
+
+        setPose(
+            Pose(
+                currentPose.x() + MecanumConstants.VisionPoseBlends.POSE_BLEND * (estimatedPose.x().minus(currentPose.x())),
+                currentPose.y() + MecanumConstants.VisionPoseBlends.POSE_BLEND * (estimatedPose.y().minus(currentPose.y())),
+                currentPose.heading() + MecanumConstants.VisionPoseBlends.HEADING_BLEND * AngleUnit.normalizeRadians(estimatedPose.heading().minus(currentPose.heading()))
+            )
+        )
     }
 }

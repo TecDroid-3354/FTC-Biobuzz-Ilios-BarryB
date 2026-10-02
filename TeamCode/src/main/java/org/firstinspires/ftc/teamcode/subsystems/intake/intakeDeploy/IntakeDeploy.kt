@@ -9,9 +9,11 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.Angle
+import kotlin.math.abs
 
 class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
 
@@ -55,6 +57,12 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     fun setIntakeDeployConfigurableAngle(): Command {
         return setIntakeDeployAngle(Angle.fromDegrees(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES)).InstantCommand(this)
+    }
+
+    fun getIsAtTarget(): Boolean {
+        return abs(
+            (intakeDeployTargetAngle.minus(leadIntakeDeployServo.getAngle())).degrees
+        ) < SubsystemTolerances.INTAKE_DEPLOY_ANGLE_TOLERANCE.degrees
     }
 
     fun log(telemetry: TelemetryManager) {

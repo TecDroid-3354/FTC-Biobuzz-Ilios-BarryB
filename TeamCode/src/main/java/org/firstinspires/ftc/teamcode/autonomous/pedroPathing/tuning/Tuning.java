@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.autonomous.pedroPathing;
+package org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning;
 
 import com.pedropathing.algorithm.Foresight;
 import com.pedropathing.revhub.drivetrains.Mecanum;
@@ -6,10 +6,11 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.pedropathing.tuning.autotune.Procedure;
 import com.pedropathing.tuning.autotune.Tuner;
 
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.ForesightTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.MecanumTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.PinpointTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.Tests;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.ForesightTuner;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.MecanumTuner;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.PinpointTuner;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.Tests;
 
 /**
  * Pedro Pathing 3.0 AutoTune procedures.

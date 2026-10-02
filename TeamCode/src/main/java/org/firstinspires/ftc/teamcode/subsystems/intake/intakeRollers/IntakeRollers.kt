@@ -10,10 +10,12 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
+import kotlin.math.abs
 
 @Suppress("JoinDeclarationAndAssignment")
 class IntakeRollers(hardwareMap: HardwareMap): SubsystemBase() {
@@ -64,6 +66,12 @@ class IntakeRollers(hardwareMap: HardwareMap): SubsystemBase() {
 
     fun stopIntakeRollers(): Command {
         return intakeRollersMotor.stopMotor().InstantCommand(this)
+    }
+
+    fun getIsAtTarget(): Boolean {
+        return abs(
+            (intakeRollersTargetVelocity.minus(intakeRollersMotor.getVelocity().get())).rpm
+        ) < SubsystemTolerances.INTAKE_ROLLERS_RPM_TOLERANCE.rpm
     }
 
     fun log(telemetry: TelemetryManager) {

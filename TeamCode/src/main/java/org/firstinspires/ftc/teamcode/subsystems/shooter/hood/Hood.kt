@@ -12,7 +12,9 @@ import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Distance
-import java.util.function.Supplier
+import org.firstinspires.ftc.robotcore.external.Supplier
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import kotlin.math.abs
 
 class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
 
@@ -57,6 +59,12 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         val calculatedAngle = HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
 
         return Angle.fromDegrees(calculatedAngle)
+    }
+
+    fun getIsAtTarget(): Boolean {
+        return abs(
+            hoodTargetAngle.degrees.minus(hoodServo.getRawPosition() * HoodConstants.Configuration.range.endInclusive.degrees)
+        ) < SubsystemTolerances.HOOD_ANGLE_TOLERANCE.degrees
     }
 
     fun log(telemetry: TelemetryManager) {

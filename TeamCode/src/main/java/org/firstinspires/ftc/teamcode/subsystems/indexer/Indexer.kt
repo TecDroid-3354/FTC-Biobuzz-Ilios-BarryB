@@ -6,15 +6,19 @@ import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
+import dev.frozenmilk.sinister.loading.Pinned
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
+import kotlin.math.abs
 
+@Pinned
 @Suppress("JoinDeclarationAndAssignment")
 class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
 
@@ -54,6 +58,10 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
         return enableIndexerWithVelocity(SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM).InstantCommand(this)
     }
 
+    fun enableIndexerIdleVelocity(): Command {
+        return enableIndexerWithVelocity(SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM).InstantCommand(this)
+    }
+
     fun enableIndexerConfigurableVelocity(): Command {
         return enableIndexerWithVelocity(AngularVelocity.fromRpm(SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM)).InstantCommand(this)
     }
@@ -62,9 +70,15 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
         return indexerMotor.stopMotor().InstantCommand(this)
     }
 
+    fun getIsAtTarget(): Boolean {
+        return abs(
+            (indexerTargetVelocity.minus(indexerMotor.getVelocity().get())).rpm
+        ) < SubsystemTolerances.INDEXER_RPM_TOLERANCE.rpm
+    }
+
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Indexer")
         telemetry.addData("Indexer Velocity RPM", indexerMotor.getVelocity().get().rpm)
-        telemetry.addData("Indexer Target Velocity RPM", indexerMotor.getVelocity().get().rpm)
+        telemetry.addData("Indexer Target Velocity RPM", indexerTargetVelocity.rpm)
     }
 }

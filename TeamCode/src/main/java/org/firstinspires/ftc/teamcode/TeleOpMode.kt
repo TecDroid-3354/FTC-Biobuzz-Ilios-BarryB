@@ -19,8 +19,13 @@ open class TeleOpMode(val alliance: Alliance): CommandOpMode() {
         robot.initLoop()
     }
 
+    override fun preRun() {
+        robot.preTeleOp()
+    }
+
     override fun run() {
         robot.run()
+        robot.printTelemetry(robot.pTelemetry)
     }
 
     override fun end() {

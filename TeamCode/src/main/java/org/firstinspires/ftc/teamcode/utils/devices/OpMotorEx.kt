@@ -32,10 +32,10 @@ import kotlin.math.min
 class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
 
     // ----- Motor and Control Mode variable's creation ----- //
-    private var motor                  : MotorEx
-    private var controlMode            : MotorControlMode = MotorControlMode.UNKNOWN
+    private var motor                           : MotorEx
+    private var controlMode                     : MotorControlMode = MotorControlMode.UNKNOWN
     // ----- Useful variables, avoids repetition ----- //
-    var reduction                       : Double = 1.0
+    var reduction                               : Double = 1.0
     private var countPerRev                     : Double = 28.0
     private var maxPower                        : Double = 1.0
     private var maxVelocity                     : AngularVelocity = AngularVelocity(0.0)
@@ -173,6 +173,8 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
     // --------- PID and Feedforward configurables update -------- //
 
     fun hadVelocityPIDControlGainsUpdated(pidCoefficients: PIDCoefficients): Boolean {
+        if (controlMode != MotorControlMode.VELOCITY) { throw wrongControlModeCommandException }
+
         val kP = motor.veloCoefficients[0]
         val kI = motor.veloCoefficients[1]
         val kD = motor.veloCoefficients[2]
@@ -181,6 +183,8 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
     }
 
     fun hadVelocityFeedforwardControlGainsUpdated(feedforward: SimpleMotorFeedforward): Boolean {
+        if (controlMode != MotorControlMode.VELOCITY) { throw wrongControlModeCommandException }
+
         val kS = motor.feedforwardCoefficients[0]
         val kV = motor.feedforwardCoefficients[1]
         val kA = motor.feedforwardCoefficients[2]
@@ -189,6 +193,8 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
     }
 
     fun hadPIDFPositionControlGainsUpdated(pidfCoefficients: PIDFCoefficients): Boolean {
+        if (controlMode != MotorControlMode.POSITION) { throw wrongControlModeCommandException }
+
         val kP = positionController.p
         val kI = positionController.i
         val kD = positionController.d
@@ -199,6 +205,8 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
     }
 
     fun hadTrapezoidalControlGainsUpdated(pidCoefficients: PIDCoefficients): Boolean {
+        if (controlMode != MotorControlMode.TRAPEZOIDAL) { throw wrongControlModeCommandException }
+
         val kP = trapezoidalController.getPID().p
         val kI = trapezoidalController.getPID().i
         val kD = trapezoidalController.getPID().d

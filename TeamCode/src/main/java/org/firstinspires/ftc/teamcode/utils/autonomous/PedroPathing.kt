@@ -14,8 +14,8 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver
 import com.qualcomm.robotcore.hardware.DcMotorSimple
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.ForesightTuner
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.Tests
+//import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.ForesightTuner
+//import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.Tests
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.LinearVelocity
 import java.util.Optional
@@ -186,7 +186,7 @@ object PedroPathing {
 
         return newConfig
     }
-
+/*
     fun createForesightTunerWithPinpoint(mecanumConfig: MecanumConfig, pinpointConfig: PinpointConfig): ForesightTuner {
         return ForesightTuner(
             { hardwareMap -> PinpointLocalizer(hardwareMap, pinpointConfig) },
@@ -235,5 +235,5 @@ object PedroPathing {
             { hardwareMap -> OTOSLocalizer(hardwareMap, otosConfig) },
             { Foresight(foresightConfig) }
         )
-    }
+    }*/
 }

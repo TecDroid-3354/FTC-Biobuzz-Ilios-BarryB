@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems.shooter.flywheel
 
-import androidx.core.util.Supplier
+import org.firstinspires.ftc.robotcore.external.Supplier
 import com.bylazar.telemetry.TelemetryManager
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDCoefficients
@@ -13,6 +13,7 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
@@ -20,6 +21,7 @@ import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.Time
 import kotlin.collections.iterator
+import kotlin.math.abs
 
 class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
 
@@ -92,6 +94,12 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         val calculatedTOF = FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
 
         return Time(calculatedTOF)
+    }
+
+    fun getIsAtTarget(): Boolean {
+        return abs(
+            (flywheelTargetVelocity.minus(leadFlywheelMotor.getVelocity().get())).rpm
+        ) < SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm
     }
 
     fun log(telemetry: TelemetryManager) {

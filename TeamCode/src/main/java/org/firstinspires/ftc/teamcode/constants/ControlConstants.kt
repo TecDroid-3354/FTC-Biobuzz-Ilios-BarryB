@@ -14,13 +14,18 @@ object DriveMultipliers {
     const val FORWARD_VELOCITY_MULTIPLIER           : Double    = 1.0
     const val LATERAL_VELOCITY_MULTIPLIER           : Double    = 1.0
     const val TURN_VELOCITY_MULTIPLIER              : Double    = -1.0
-
-    const val CONTROLLER_SOTM_LIMIT_MULTIPLIER                 : Double    = 1.0
+    const val CONTROLLER_SOTM_LINEAR_MULTIPLIER     : Double    = 0.5
+    const val CONTROLLER_SOTM_ANGULAR_MULTIPLIER    : Double    = 0.6
 }
 
 object SubsystemTolerances {
-    val TURRET_ANGLE_TOLERANCE = Angle.fromDegrees(1.0)
+    val FLYWHEEL_RPM_TOLERANCE = AngularVelocity.fromRpm(40.0)
+    val FLYWHEEL_HARD_STOP_ANGLE_TOLERANCE = Angle.fromDegrees(30.0)
+    val HOOD_ANGLE_TOLERANCE = Angle.fromDegrees(1.0)
     val INTAKE_DEPLOY_ANGLE_TOLERANCE = Angle.fromDegrees(1.0)
+    val INTAKE_ROLLERS_RPM_TOLERANCE = AngularVelocity.fromRpm(20.0)
+    val TURRET_ANGLE_TOLERANCE = Angle.fromDegrees(2.5)
+    val INDEXER_RPM_TOLERANCE = AngularVelocity.fromRpm(20.0)
 }
 
 object SubsystemLimits {
@@ -30,6 +35,8 @@ object SubsystemLimits {
     val HOOD_ANGLE_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
     val TURRET_ANGLE_LIMITS = Angle.fromDegrees(-180.0)..Angle.fromDegrees(180.0)
     val INDEXER_MAX_VELOCITY = AngularVelocity(0.0)..AngularVelocity(6000.0 / IndexerConstants.Mechanical.GEAR_RATIO)
+    val FLYWHEEL_HARD_STOP_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
+
 }
 
 object SubsystemPresetTargets {
@@ -46,13 +53,18 @@ object SubsystemPresetTargets {
 
     // Hood Preset Angle Targets //
     val HOOD_PRESET_ANGLE = Angle.fromDegrees(90.0)
+    val HOOD_HOME_ANGLE = Angle.fromDegrees(0.0)
 
-    val HOOD_HOME_ANGLE = Angle.fromDegrees(90.0)
-
+    // Turret Preset Angle Targets //
     val TURRET_ZERO_ANGLE = Angle(0.0)
 
     // Indexer Preset RPM Targets //
     val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(4000.0)
+    val INDEXER_PRESET_IDLE_RPM = AngularVelocity.fromRpm(2000.0)
+
+    // Flywheel Hard Stop Preset Angle Targets //
+    val FLYWHEEL_HARD_STOP_CLEARING_ANGLE = Angle(0.0)
+    val FLYWHEEL_HARD_STOP_BLOCKING_ANGLE = Angle(90.0)
 }
 
 @Configurable
@@ -80,6 +92,10 @@ object SubsystemConfigurableTargets {
     // Indexer Configurable RPM Targets //
     @JvmField
     var INDEXER_CONFIGURABLE_RPM = 0.0
+
+    // Flywheel Hard Stop Configurable Angle Targets //
+    @JvmField
+    var FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE = 0.0
 }
 
 @Configurable
