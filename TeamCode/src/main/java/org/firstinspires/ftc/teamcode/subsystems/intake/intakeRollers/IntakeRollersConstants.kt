@@ -5,6 +5,7 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
+import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 
 object IntakeRollersConstants {
     
@@ -14,6 +15,7 @@ object IntakeRollersConstants {
     
     object Mechanical {
         const val GEAR_RATIO = 1.0
+        val TARGET_VELOCITY_THRESHOLD = AngularVelocity.fromRpm(100.0)
     }
     
     object Configuration{

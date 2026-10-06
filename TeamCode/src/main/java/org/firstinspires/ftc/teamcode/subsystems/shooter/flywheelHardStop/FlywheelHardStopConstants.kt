@@ -11,6 +11,7 @@ object FlywheelHardStopConstants {
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
+        val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(20.0)
 
         val servoRange = Angle(0.0)..Angle.fromDegrees(180.0)
     }

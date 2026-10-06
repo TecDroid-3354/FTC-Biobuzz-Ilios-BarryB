@@ -20,6 +20,7 @@ object IntakeDeployConstants {
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
+        val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(20.0)
 
         val leadAbsoluteEncoderOffset = Angle(0.0)
         val followerAbsoluteEncoderOffset = Angle(0.0)

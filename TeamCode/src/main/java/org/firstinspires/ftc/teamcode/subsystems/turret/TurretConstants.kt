@@ -19,6 +19,7 @@ object TurretConstants {
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
+        val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(1.0)
 
         val leftEncoderOffset = Angle(0.0)
 

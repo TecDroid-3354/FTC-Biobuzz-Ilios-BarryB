@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.systems
 
+import com.bylazar.telemetry.TelemetryManager
 import org.firstinspires.ftc.robotcore.external.Supplier
 import com.pedropathing.follower.Follower
 import com.pedropathing.math.Pose
@@ -16,6 +17,7 @@ import com.seattlesolvers.solverslib.geometry.Translation2d
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions
+import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
 import org.firstinspires.ftc.teamcode.constants.ScoringTargets
 import org.firstinspires.ftc.teamcode.subsystems.indexer.Indexer
@@ -30,6 +32,7 @@ import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.toTranslation2d
+import org.firstinspires.ftc.teamcode.utils.localization.PoseEstimator
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.LinearVelocity
 import java.util.Optional
@@ -40,25 +43,27 @@ import kotlin.math.hypot
 class Superstructure(
     private val hardwareMap: HardwareMap,
     private val controller: GamepadEx,
-    private val alliance: Alliance
+    private val alliance: Alliance,
+    private val telemetryM: TelemetryManager
 ): SubsystemBase() {
 
     // ------------------------------------------ //
     // --------- Subsystem Declaration ---------- //
     // ------------------------------------------ //
     private lateinit var follower: Follower
+    private lateinit var turret: Turret
+    private lateinit var poseEstimator: PoseEstimator
     private lateinit var mecanum: Mecanum
     private lateinit var intakeDeploy: IntakeDeploy
     private lateinit var intakeRollers: IntakeRollers
     private lateinit var indexer: Indexer
-    private lateinit var turret: Turret
     private lateinit var hood: Hood
     private lateinit var flywheel: Flywheel
     private lateinit var flywheelHardStop: FlywheelHardStop
     private lateinit var limelight: Limelight
 
     // ---------------------------------------------------------------- //
-    // --------- Useful variables (Velocities, distances and dynamic targets) ---------- //
+    // - Useful variables (Velocities, distances and dynamic targets) - //
     // ---------------------------------------------------------------- //
     private val scoringTargets: ScoringTargets = ScoringTargets(alliance)
     private var robotToTurretPose: Pose2d = Pose2d()
@@ -96,16 +101,20 @@ class Superstructure(
     private fun subsystemInitialization() {
         // Follower Initialization
         follower = Constants.createFollower(hardwareMap)
+        // Turret Initialization
+        turret = Turret(hardwareMap)
+        // Pose Estimator Intialization
+        poseEstimator = PoseEstimator(
+            LocalizationConstants.mount, LocalizationConstants.tagMap, LocalizationConstants.estimatorConfig
+        )
         // Mecanum Initialization
-        mecanum = Mecanum(follower, controller, alliance)
+        mecanum = Mecanum(follower, controller, alliance, poseEstimator) { turret.getAngle() }
         // Intake deploy Initialization
         intakeDeploy = IntakeDeploy(hardwareMap)
         // Intake Rollers Initialization
         intakeRollers = IntakeRollers(hardwareMap)
         // Indexer Initialization
         indexer = Indexer(hardwareMap)
-        // Turret Initialization
-        turret = Turret(hardwareMap)
         // Hood Initialization
         hood = Hood(hardwareMap)
         // Flywheel Initialization
@@ -113,7 +122,7 @@ class Superstructure(
         // Flywheel hard stop initialization
         flywheelHardStop = FlywheelHardStop(hardwareMap)
         // Limelight initialization
-        limelight = Limelight(hardwareMap, mecanum) { mecanum.getRotation() }
+        limelight = Limelight(hardwareMap, mecanum)
     }
 
     // --------------- ----- -------- --------------- //
@@ -124,7 +133,7 @@ class Superstructure(
      * Sets the [Mecanum] default command and its initial [pose] in teleoperated init.
      */
     fun setDriveDefaultCommandAndInitialPose(pose: Pose) {
-        mecanum.defaultCommand = mecanum.driveFollowingDriverInput()
+        mecanum.defaultCommand = mecanum.driveFollowingDriverInputFieldRelativeScaled()
         mecanum.setPose(pose)
     }
 
@@ -134,9 +143,9 @@ class Superstructure(
      * Called for shooting on the move.
      */
     fun setDriveScaledSOTMCommand(): Command {
-        return mecanum.driveFollowingScaledDriverInput(
-            Optional.of(DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER),
-            Optional.of(DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER)
+        return mecanum.driveFollowingDriverInputFieldRelativeScaled(
+            Optional.of(DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER)
+            //Optional.of(DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER)
         )
     }
 
@@ -249,7 +258,6 @@ class Superstructure(
      * calculated based on the current [ScoringTargets] and by compensating for the [robotTangentialVelocityToTarget]
      * based on the robot's virtual distance. It also receives the [Mecanum]'s rotation as an argument to convert the
      * chassis relative angle to a [Turret] angle.
-     *
      */
     fun setTurretCalculatedAngleSequence(): Command {
         return setTurretCalculatedAngle(
@@ -485,13 +493,56 @@ class Superstructure(
     }
 
     // --------------- ----- -------- --------------- //
-    // ---------------- END RUNNABLE --------------- //
+    // --------------- OPMODE RUNNABLE -------------- //
     // --------------- ----- -------- --------------- //
 
-    /** Returns a [Runnable] which assigns [PoseStorage.autonomousEndPose] the [Follower]'s last value */
+    /** Returns a [Runnable] which starts the Limelight. Call [Runnable.run] for correct working */
+    fun preTeleop(): Runnable {
+        return limelight.start()
+    }
+
+    /** Returns a [Runnable] which assigns [PoseStorage.autonomousEndPose] the [Follower]'s last value. Call [Runnable.run] for correct working */
     fun onEnd(): Runnable {
         return {
             PoseStorage.autonomousEndPose = follower.pose()
         }
+    }
+
+    // --------------- ----- -------- --------------- //
+    // ------------------ TELEMETRY ----------------- //
+    // --------------- ----- -------- --------------- //
+    fun logIndexer() {
+        indexer.log(telemetryM)
+    }
+
+    fun logIntakeDeploy() {
+        intakeDeploy.log(telemetryM)
+    }
+
+    fun logIntakeRollers() {
+        intakeRollers.log(telemetryM)
+    }
+
+    fun logFlywheel() {
+        flywheel.log(telemetryM)
+    }
+
+    fun logFlywheelHardStop() {
+        flywheelHardStop.log(telemetryM)
+    }
+
+    fun logHood() {
+        hood.log(telemetryM)
+    }
+
+    fun logTurret() {
+        turret.log(telemetryM)
+    }
+
+    fun logOdometry() {
+        telemetryM.addLine("Odometry")
+        telemetryM.addData("Raw", mecanum.getRawPose())
+        telemetryM.addData("Fused", mecanum.getPose())
+        telemetryM.addData("Stats", poseEstimator.stats)
     }
 }

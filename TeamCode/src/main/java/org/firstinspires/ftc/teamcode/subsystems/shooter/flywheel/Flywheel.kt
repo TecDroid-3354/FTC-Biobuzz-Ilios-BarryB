@@ -31,9 +31,11 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
     private var flywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
 
     init {
+        // Initialization code
         configureMotors()
     }
 
+    /** Runs every cycle */
     override fun periodic() {
         if (leadFlywheelMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.FLYWHEEL_MOTOR_PID)
             || leadFlywheelMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)) {
@@ -41,6 +43,12 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         }
     }
 
+    /**
+     * Updates the [leadFlywheelMotor] and [followerFlywheelMotor]'s [com.qualcomm.robotcore.hardware.PIDCoefficients] and [SimpleMotorFeedforward]'s coefficients
+     * by applying a new configuration.
+     * @param pidCoefficients the new [PIDCoefficients]
+     * @param feedforward the new [SimpleMotorFeedforward] Coefficients
+     */
     private fun updateIntakeRollersControlGains(pidCoefficients: PIDCoefficients, feedforward: SimpleMotorFeedforward) {
         val newConfig = MotorVelocityModeConfiguration()
             .withVelocityCoefficients(pidCoefficients)
@@ -50,31 +58,52 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         followerFlywheelMotor.applyModeConfiguration(newConfig)
     }
 
+    /**
+     * A [Runnable] which enables the flywheel with the given [AngularVelocity] after being clamped
+     * by the [SubsystemLimits.FLYWHEEL_MAX_VELOCITY] limit.
+     * @param velocity the desired [AngularVelocity]
+     * @return a [Runnable] which enables the flywheel
+     */
     private fun enableFlywheelWithVelocity(velocity: AngularVelocity): Runnable {
         return {
-            flywheelTargetVelocity = velocity.coerceIn(SubsystemLimits.SHOOTER_MAX_VELOCITY)
+            flywheelTargetVelocity = velocity.coerceIn(SubsystemLimits.FLYWHEEL_MAX_VELOCITY)
 
             leadFlywheelMotor.setVelocity(velocity)
             followerFlywheelMotor.setVelocity(velocity)
         }
     }
 
+    /**
+     * Calls [enableFlywheelWithVelocity] and enables the rollers with the [SubsystemPresetTargets.FLYWHEEL_PRESET_RPM] value.
+     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the flywheel at the given velocity.
+     */
     fun setFlywheelPresetVelocity(): Command {
         return enableFlywheelWithVelocity(SubsystemPresetTargets.FLYWHEEL_PRESET_RPM).InstantCommand(this)
     }
 
+    /**
+     * Calls [enableFlywheelWithVelocity] and enables the rollers with the [SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM] value.
+     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
+     */
     fun setFlywheelConfigurableVelocity(): Command {
         return enableFlywheelWithVelocity(AngularVelocity.fromRpm(SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM)).InstantCommand(this)
     }
 
+    /**
+     * Calculate the desired target velocity based on the [flywheelDistanceToTarget] and the [FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT].
+     * @return a [RunCommand] that enables the flywheel with the calculated velocity.
+     */
     fun setFlywheelCalculatedScoringVelocity(flywheelDistanceToTarget: Supplier<Distance>): Command {
         return RunCommand({
             val flywheelCalculatedVelocity =
-                getCalculatedHiveScoringVelocity(flywheelDistanceToTarget.get()) // TODO Get this value from an actual interpolated table or polynomial
+                getCalculatedHiveScoringVelocity(flywheelDistanceToTarget.get())
             enableFlywheelWithVelocity(flywheelCalculatedVelocity).run()
         }, this)
     }
 
+    /**
+     * Creates an [com.seattlesolvers.solverslib.command.InstantCommand] based off the [OpMotorEx.stopMotor] method.
+     */
     fun stopFlywheel(): Command {
         return InstantCommand({
             leadFlywheelMotor.stopMotor()
@@ -82,6 +111,9 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         }, this)
     }
 
+    /**
+     * Calculate the HIVE Scoring [Flywheel] target [AngularVelocity] based on the distance to its target.
+     */
     private fun getCalculatedHiveScoringVelocity(flywheelDistanceToTarget: Distance): AngularVelocity {
         val distanceInMeters = flywheelDistanceToTarget.meters
         val calculatedRPMs = FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
@@ -89,6 +121,9 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         return AngularVelocity.fromRpm(calculatedRPMs)
     }
 
+    /**
+     * Calculate the Scoring TOF [Flywheel] target [AngularVelocity] based on the distance to its target.
+     */
     fun getCalculatedScoringTimeOfFlight(flywheelDistanceToTarget: Distance): Time {
         val distanceInMeters = flywheelDistanceToTarget.meters
         val calculatedTOF = FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
@@ -96,12 +131,18 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         return Time(calculatedTOF)
     }
 
+    /**
+     * @return whether the flywheel has reached its target
+     */
     fun getIsAtTarget(): Boolean {
+        if (flywheelTargetVelocity < FlywheelConstants.Mechanical.VELOCITY_TARGET_THRESHOLD) return false
+
         return abs(
             (flywheelTargetVelocity.minus(leadFlywheelMotor.getVelocity().get())).rpm
         ) < SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm
     }
 
+    // Logs useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Flywheel")
         telemetry.addData("Flywheel Lead Motor Connected", leadFlywheelMotor.getIsConnected().asBoolean)
@@ -110,6 +151,7 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         telemetry.addData("Flywheel Velocity RPM", leadFlywheelMotor.getVelocity().get().rpm)
     }
 
+    // Motor and interpolation configuration
     private fun configureMotors() {
         leadFlywheelMotor = OpMotorEx(hardwareMap, FlywheelConstants.Identification.FLYWHEEL_LEAD_MOTOR_ID)
         leadFlywheelMotor.applyConfigurationAndResetEncoder(FlywheelConstants.Configuration.leadMotorConfiguration)

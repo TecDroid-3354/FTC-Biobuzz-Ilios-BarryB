@@ -35,7 +35,7 @@ class Robot(
         // Follower initialization
         follower = Constants.createFollower(hardwareMap)
         // Subsystem initialization
-        drive = Mecanum(follower, controller, alliance)
+        //drive = Mecanum(follower, controller, alliance)
     }
 
     /* Runs indefinitely after the init button on the DS is pressed. Stops when play button is pressed */

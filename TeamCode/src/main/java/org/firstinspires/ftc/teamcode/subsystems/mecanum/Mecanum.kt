@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.subsystems.mecanum
 
 import com.pedropathing.api.Paths
+import com.pedropathing.controllers.PIDController
+import com.pedropathing.drivetrain.DrivePowers
 import com.pedropathing.follower.Follower
 import com.pedropathing.follower.ManualDrive
 import com.pedropathing.math.Pose
@@ -11,35 +13,53 @@ import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import com.seattlesolvers.solverslib.geometry.Pose2d
 import com.seattlesolvers.solverslib.geometry.Rotation2d
-import com.seattlesolvers.solverslib.geometry.Transform2d
 import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.seattlesolvers.solverslib.geometry.Vector2d
 import com.seattlesolvers.solverslib.kinematics.wpilibkinematics.ChassisSpeeds
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
+import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.extensions.toPedroPose
 import org.firstinspires.ftc.teamcode.utils.extensions.toPose2d
-import org.firstinspires.ftc.teamcode.utils.units.Distance
+import org.firstinspires.ftc.teamcode.utils.extensions.x
+import org.firstinspires.ftc.teamcode.utils.extensions.y
 import org.firstinspires.ftc.teamcode.utils.units.LinearVelocity
+import org.firstinspires.ftc.teamcode.utils.localization.PoseEstimator
+import org.firstinspires.ftc.teamcode.utils.localization.VisionFrame
+import org.firstinspires.ftc.teamcode.utils.units.Angle
+import org.firstinspires.ftc.teamcode.utils.units.nowSeconds
 import java.util.Optional
+import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 class Mecanum(
     private val follower: Follower,
     private val controller: GamepadEx,
-    private val alliance: Alliance
+    private val alliance: Alliance,
+    private val poseEstimator: PoseEstimator,
+    private val turretAngle: () -> Angle
 ): SubsystemBase(), Limelight.VisionConsumer {
+
+    private var angleController: PIDController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
+    private var lastDriveAngle: Angle = Angle(0.0)
 
     /**
      * Runs in every loop. Follower and telemetry get updated
      */
     override fun periodic() {
         follower.update()
+        val odometry = follower.pose()
+        poseEstimator.updateOdometry(nowSeconds(), odometry.x(), odometry.y(), odometry.heading(), turretAngle().radians)
+
+        // Update angle controller
+        if (angleController.kP != SubsystemControlGains.MECANUM_ANGLE_PID.p
+            || angleController.kI != SubsystemControlGains.MECANUM_ANGLE_PID.i
+            || angleController.kD != SubsystemControlGains.MECANUM_ANGLE_PID.p) {
+            angleController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
+        }
     }
 
     /**
@@ -65,11 +85,63 @@ class Mecanum(
         return driveFollowingScaledDriverInput(Optional.empty(), Optional.empty())
     }
 
+    fun driveFollowingDriverInputFieldRelativeScaled(driveScalar: Optional<Double>): Command {
+        return RunCommand({
+            // Calculate angle from joystick
+            val angleFromJoystick = getAngleFromJoystick(controller.leftX, controller.leftY)
+            // Store drive powers, turn is left at zero as ManualDrive.headingLock will calculate it.
+            val drivePowers = DrivePowers(
+                -controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                0.0
+            )
+
+            // Calculate the final powers to lock heading using the angleController and the calculated angle.
+            // The follower only gives velocity, it is not commanded within ManualDrive.headingLock()
+            val headingLockPowers = ManualDrive.headingLock(
+                follower,
+                angleController,
+                drivePowers,
+                angleFromJoystick.radians
+            )
+
+            // Drive manually using the headingLockPowers
+            follower.manual(headingLockPowers)
+        })
+            .addRequirements(this)
+    }
+
+    fun driveFollowingDriverInputFieldRelativeScaled(): Command {
+        return driveFollowingDriverInputFieldRelativeScaled(Optional.empty())
+    }
+
+    private fun getAngleFromJoystick(x: Double, y: Double): Angle {
+        if (abs(-y) < 0.3 && abs(x) < 0.3) return lastDriveAngle;
+
+        val atan2Rad = atan2(
+            -y * alliance.multiplier, x * alliance.multiplier
+        ) + Math.PI / 2
+
+        lastDriveAngle = Angle.fromRadians(atan2Rad)
+
+        return lastDriveAngle
+    }
+
     /**
      * Gets the Follower's current position.
      * @return a [Pose2D] containing the robot's current position in the standard FTC Coordinates
      */
     fun getPose(): Pose2d {
+        val odometry = follower.pose()
+        if (!poseEstimator.isInitialized) return odometry.toPose2d()
+        return Pose(poseEstimator.x, poseEstimator.y, odometry.heading()).toPose2d()
+    }
+
+    /**
+     * Gets the Follower's current position.
+     * @return a [Pose2D] containing the robot's current position in the standard FTC Coordinates
+     */
+    fun getRawPose(): Pose2d {
         return follower.pose().toPose2d()
     }
 
@@ -167,12 +239,18 @@ class Mecanum(
 
         return FollowPathCommand(follower, path, holdEnd, maxPower)
             .addRequirements(this)
-            .beforeStarting(Runnable { follower.stop() })
+            .beforeStarting(Runnable { follower.stop(); syncFollowerToEstimate() })
     }
 
     fun followPathCMD(path: Path, holdEnd: Boolean, maxPower: Double): Command {
         return FollowPathCommand(follower, path, holdEnd, maxPower)
             .addRequirements(this)
+    }
+
+    private fun syncFollowerToEstimate() {
+        if (!poseEstimator.isInitialized) return
+        follower.setPose(Pose(poseEstimator.x, poseEstimator.y, follower.pose().heading()))
+        poseEstimator.resetPose()
     }
 
     /**
@@ -181,17 +259,10 @@ class Mecanum(
      */
     fun setPose(pose: Pose) {
         follower.setPose(pose)
+        poseEstimator.resetPose()
     }
 
-    override fun accept(estimatedPose: Pose) {
-        val currentPose = getPose().toPedroPose()
-
-        setPose(
-            Pose(
-                currentPose.x() + MecanumConstants.VisionPoseBlends.POSE_BLEND * (estimatedPose.x().minus(currentPose.x())),
-                currentPose.y() + MecanumConstants.VisionPoseBlends.POSE_BLEND * (estimatedPose.y().minus(currentPose.y())),
-                currentPose.heading() + MecanumConstants.VisionPoseBlends.HEADING_BLEND * AngleUnit.normalizeRadians(estimatedPose.heading().minus(currentPose.heading()))
-            )
-        )
+    override fun accept(frame: VisionFrame) {
+        poseEstimator.addVisionFrame(frame)
     }
 }

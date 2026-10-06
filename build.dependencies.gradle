@@ -1,9 +1,6 @@
 repositories {
     mavenCentral()
     google() // Needed for androidx
-
-    maven {url = 'https://mymaven.bylazar.com/releases'}
-    maven {url = "https://repo.dairy.foundation/releases"}
 }
 
 dependencies {
@@ -29,6 +26,6 @@ dependencies {
     implementation("dev.frozenmilk.dairy:Core:2.2.4")
 
     // Sloth + Panels Dashboard
-    implementation("com.bylazar.sloth:fullpanels:0.3.2+1.0.13")
+    implementation "com.bylazar:fullpanels:1.0.17"
 }
 

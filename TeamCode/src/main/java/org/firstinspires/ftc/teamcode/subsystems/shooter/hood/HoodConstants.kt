@@ -13,6 +13,7 @@ object HoodConstants {
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
+        val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(2.0)
     }
 
     object Interpolation {
