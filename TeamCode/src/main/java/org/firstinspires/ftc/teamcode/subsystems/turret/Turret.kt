@@ -128,7 +128,7 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
         ) < SubsystemTolerances.TURRET_ANGLE_TOLERANCE.degrees
     }
 
-
+    // Log useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Turret")
         telemetry.addData("Turret Right Angle Degrees", rightTurretServo.getAngle().degrees)

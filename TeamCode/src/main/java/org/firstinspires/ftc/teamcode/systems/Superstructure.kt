@@ -14,12 +14,14 @@ import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import com.seattlesolvers.solverslib.geometry.Pose2d
 import com.seattlesolvers.solverslib.geometry.Rotation2d
 import com.seattlesolvers.solverslib.geometry.Translation2d
+import com.skeletonarmy.marrow.zones.PolygonZone
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
-import org.firstinspires.ftc.teamcode.constants.FieldDimensions
 import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
+import org.firstinspires.ftc.teamcode.constants.RobotDimensions
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
 import org.firstinspires.ftc.teamcode.constants.ScoringTargets
+import org.firstinspires.ftc.teamcode.constants.Zones
 import org.firstinspires.ftc.teamcode.subsystems.indexer.Indexer
 import org.firstinspires.ftc.teamcode.subsystems.intake.intakeDeploy.IntakeDeploy
 import org.firstinspires.ftc.teamcode.subsystems.intake.intakeRollers.IntakeRollers
@@ -31,6 +33,7 @@ import org.firstinspires.ftc.teamcode.subsystems.turret.Turret
 import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
+import org.firstinspires.ftc.teamcode.utils.extensions.toPose2d
 import org.firstinspires.ftc.teamcode.utils.extensions.toTranslation2d
 import org.firstinspires.ftc.teamcode.utils.localization.PoseEstimator
 import org.firstinspires.ftc.teamcode.utils.units.Distance
@@ -67,35 +70,13 @@ class Superstructure(
     // ---------------------------------------------------------------- //
     private val scoringTargets: ScoringTargets = ScoringTargets(alliance)
     private var robotToTurretPose: Pose2d = Pose2d()
+    private var robotZone = PolygonZone(RobotDimensions.ROBOT_WIDTH.inches, RobotDimensions.ROBOT_LENGTH.inches)
     private var turretDistanceToTarget: Distance = Distance(0.0)
     private var robotRadialVelocityToTarget: LinearVelocity = LinearVelocity(0.0)
     private var robotTangentialVelocityToTarget: LinearVelocity = LinearVelocity(0.0)
 
     init {
         subsystemInitialization()
-    }
-
-    override fun periodic() {
-        // Updates the robot to turret pose by retrieving the Mecanum's pose and transforming it by the Turret Transform2d
-        robotToTurretPose = mecanum.getPose().transformBy(RobotTransformations.ROBOT_TO_TURRET_2D)
-
-        // Updates the Turret's distance to the current scoring target.
-        turretDistanceToTarget = Distance.fromMeters(
-            hypot(
-                getScoringTarget().get().x.minus(robotToTurretPose.x),
-                getScoringTarget().get().y.minus(robotToTurretPose.y)
-            )
-        )
-
-        // Updates the robot's radial velocity to the current scoring target
-        robotRadialVelocityToTarget = mecanum.getRobotRadialVelocity(
-            getScoringTarget().get()
-        )
-
-        // Updates the robot's tangential velocity to the current scoring target
-        robotTangentialVelocityToTarget = mecanum.getRobotTangentialVelocity(
-            getScoringTarget().get()
-        )
     }
 
     private fun subsystemInitialization() {
@@ -125,6 +106,33 @@ class Superstructure(
         limelight = Limelight(hardwareMap, mecanum)
     }
 
+    override fun periodic() {
+        // Updates robot zone position
+        robotZone.setPosition(mecanum.getPose().x(), mecanum.getPose().y())
+        robotZone.rotation = mecanum.getRotation().radians
+
+        // Updates the robot to turret pose by retrieving the Mecanum's pose and transforming it by the Turret Transform2d
+        robotToTurretPose = mecanum.getPose().toPose2d().transformBy(RobotTransformations.ROBOT_TO_TURRET_2D)
+
+        // Updates the Turret's distance to the current scoring target.
+        turretDistanceToTarget = Distance.fromMeters(
+            hypot(
+                getScoringTarget().get().x.minus(robotToTurretPose.x),
+                getScoringTarget().get().y.minus(robotToTurretPose.y)
+            )
+        )
+
+        // Updates the robot's radial velocity to the current scoring target
+        robotRadialVelocityToTarget = mecanum.getRobotRadialVelocity(
+            getScoringTarget().get()
+        )
+
+        // Updates the robot's tangential velocity to the current scoring target
+        robotTangentialVelocityToTarget = mecanum.getRobotTangentialVelocity(
+            getScoringTarget().get()
+        )
+    }
+
     // --------------- ----- -------- --------------- //
     // --------------- DRIVE COMMANDS --------------- //
     // --------------- ----- -------- --------------- //
@@ -133,7 +141,7 @@ class Superstructure(
      * Sets the [Mecanum] default command and its initial [pose] in teleoperated init.
      */
     fun setDriveDefaultCommandAndInitialPose(pose: Pose) {
-        mecanum.defaultCommand = mecanum.driveFollowingDriverInputFieldRelativeScaled()
+        mecanum.defaultCommand = mecanum.driveFieldRelative()
         mecanum.setPose(pose)
     }
 
@@ -143,7 +151,7 @@ class Superstructure(
      * Called for shooting on the move.
      */
     fun setDriveScaledSOTMCommand(): Command {
-        return mecanum.driveFollowingDriverInputFieldRelativeScaled(
+        return mecanum.driveFieldRelativeScaled(
             Optional.of(DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER)
             //Optional.of(DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER)
         )
@@ -158,13 +166,13 @@ class Superstructure(
      * Drives the [Mecanum] to a target [pose] in the field. Calls [Mecanum.followPathToTargetFieldPosition]
      * reach its target position.
      */
-    fun setDriveFieldTargetPosition(pose: Pose2d): Command {
+    fun setDriveFieldTargetPosition(pose: Pose): Command {
         return mecanum.followPathToTargetFieldPosition(pose, true, 1.0)
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
     fun isDriveOnLeftSide(): BooleanSupplier {
-        return { mecanum.getPose().y >= FieldDimensions.LEFT_SIDE_END.inches }
+        return { robotZone.isFullyInside(Zones.LEFT_SIDE) }
     }
 
     /** Based on the robot's position on the field (left/right side) returns the current scoring target. */

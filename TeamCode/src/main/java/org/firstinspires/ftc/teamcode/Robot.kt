@@ -9,10 +9,16 @@ import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
+import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.subsystems.mecanum.Mecanum
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
+import org.firstinspires.ftc.teamcode.utils.extensions.a
+import org.firstinspires.ftc.teamcode.utils.extensions.circle
+import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
+import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
 
 class Robot(
     private val alliance: Alliance,
@@ -35,7 +41,7 @@ class Robot(
         // Follower initialization
         follower = Constants.createFollower(hardwareMap)
         // Subsystem initialization
-        //drive = Mecanum(follower, controller, alliance)
+        drive = Mecanum(follower, controller, alliance)
     }
 
     /* Runs indefinitely after the init button on the DS is pressed. Stops when play button is pressed */
@@ -44,7 +50,7 @@ class Robot(
     /* Initialize your teleop controller commands here */
     override fun initTeleOp() {
         // Chassis default command
-        drive.setPose(PoseStorage.autonomousEndPose)
+        drive.setPose(Pose(70.75, 132.0, 0.0))
         drive.defaultCommand = drive.driveFollowingDriverInput()
 
         // Configure Control Bindings
@@ -82,6 +88,7 @@ class Robot(
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
         telemetryManager.update(telemetry)
+        telemetryManager.addData("Odometry", drive.getPose())
     }
 
     /* Common method to follow any path */
@@ -92,5 +99,8 @@ class Robot(
     /**
      * Write here your controller.button() commands.
      */
-    override fun configureBindings() {}
+    override fun configureBindings() {
+        controller.circle()
+            .onTrue(drive.followPathToTargetFieldPosition(Pose(70.74999999999999, 109.64705882352942, 0.0), true, 1.0))
+    }
 }

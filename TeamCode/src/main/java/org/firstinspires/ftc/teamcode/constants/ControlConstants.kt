@@ -36,7 +36,6 @@ object SubsystemLimits {
     val TURRET_ANGLE_LIMITS = Angle.fromDegrees(-180.0)..Angle.fromDegrees(180.0)
     val INDEXER_MAX_VELOCITY = AngularVelocity(0.0)..AngularVelocity(6000.0 / IndexerConstants.Mechanical.GEAR_RATIO)
     val FLYWHEEL_HARD_STOP_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
-
 }
 
 object SubsystemPresetTargets {
@@ -102,7 +101,7 @@ object SubsystemConfigurableTargets {
 object SubsystemControlGains {
     // Mecanum Angle PID Controller //
     @JvmField
-    var MECANUM_ANGLE_PID = PIDCoefficients(0.1, 0.0, 0.0)
+    var MECANUM_ANGLE_PID = PIDCoefficients(1.1, 0.0, 0.0001)
 
     // Intake PID and Feedforward Configurables //
     @JvmField

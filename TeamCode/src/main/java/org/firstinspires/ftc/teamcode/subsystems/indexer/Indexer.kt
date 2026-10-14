@@ -6,7 +6,6 @@ import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
-import dev.frozenmilk.sinister.loading.Pinned
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -18,7 +17,6 @@ import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import kotlin.math.abs
 
-@Pinned
 @Suppress("JoinDeclarationAndAssignment")
 class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
 

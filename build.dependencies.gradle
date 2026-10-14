@@ -14,18 +14,21 @@ dependencies {
     implementation 'org.firstinspires.ftc:Vision:12.0.0'
     implementation 'androidx.appcompat:appcompat:1.2.0'
 
-    // SolversLib: Latest Stable Version
-    implementation "org.solverslib:core:0.3.6" // core
-    implementation "org.solverslib:pedroPathing:0.3.6" // pedroPathing
+    // SolversLib
+    implementation "org.solverslib:core:0.3.6" // Core
+    implementation "org.solverslib:pedroPathing:0.3.6" // Pedro Pathing
 
     // Pedro Pathing
     implementation 'com.pedropathing:revhub:3.0.1' // Library
     implementation 'com.pedropathing:tuning:1.0.1' // Auto Tuning
 
-    // Dairy Core
-    implementation("dev.frozenmilk.dairy:Core:2.2.4")
+    // Marrow
+    implementation 'com.skeletonarmyftc.marrow:core:1.2.0'
 
-    // Sloth + Panels Dashboard
+    // Dairy Core
+    //implementation("dev.frozenmilk.dairy:Core:2.2.4")
+
+    // Panels Dashboard
     implementation "com.bylazar:fullpanels:1.0.17"
 }
 

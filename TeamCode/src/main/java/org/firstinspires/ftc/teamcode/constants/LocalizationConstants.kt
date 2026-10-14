@@ -6,6 +6,10 @@ import org.firstinspires.ftc.teamcode.utils.localization.EstimatorConfig
 import org.firstinspires.ftc.teamcode.utils.units.HingeJoint
 import org.firstinspires.ftc.teamcode.utils.units.Vec2
 import org.firstinspires.ftc.teamcode.utils.units.Vec3
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.FIELD_CENTER_PEDRO
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.HIVE_OFFSET_X
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.PIVOT_HEIGHT
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.REST_ANGLE
 
 /**
  * Everything the pose estimator needs to know about the robot and the field.
@@ -32,27 +36,23 @@ object LocalizationConstants {
         cameraPitchUp = Math.toRadians(0.0)     // TODO lens tilt above horizontal. Every tag is above the camera, so this is > 0
     )
 
-    // ---- BIOBUZZ HIVE, from the team's tag sheet (field-centered inches; added to FIELD_CENTER below) ----
-    private const val FIELD_CENTER = 72.0
-    private const val HIVE_OFFSET_X = 12.75          // red hive at -12.75, blue at +12.75
-    private const val PIVOT_HEIGHT = 43.95
-    private const val TAG_HEIGHT_AT_LEVEL = 36.95    // tag center height with the hive level (never happens in a match)
-    private const val ARM = 15.44                    // tag cluster distance from the pivot along the arm
-    private val REST_ANGLE = Math.toRadians(30.0)    // the hive rests at +30 or -30, nothing in between
+    const val TAG_HEIGHT_AT_LEVEL = 42.55    // tag center height with the hive level (never happens in a match)
+
+    const val ARM = 14.27                    // tag cluster distance from the pivot along the arm
 
     // The hive turns about a horizontal line parallel to +x (the cells sit at +y and -y).
     private val redHinge = HingeJoint(
-        Vec3(FIELD_CENTER - HIVE_OFFSET_X, FIELD_CENTER, PIVOT_HEIGHT),
+        Vec3(FIELD_CENTER_PEDRO.inches - HIVE_OFFSET_X.inches, FIELD_CENTER_PEDRO.inches, PIVOT_HEIGHT.inches),
         Vec3(1.0, 0.0, 0.0)
     )
     private val blueHinge = HingeJoint(
-        Vec3(FIELD_CENTER + HIVE_OFFSET_X, FIELD_CENTER, PIVOT_HEIGHT),
+        Vec3(FIELD_CENTER_PEDRO.inches + HIVE_OFFSET_X.inches, FIELD_CENTER_PEDRO.inches, PIVOT_HEIGHT.inches),
         Vec3(1.0, 0.0, 0.0)
     )
 
     private fun AprilTagMap.hiveTag(id: Int, sheetX: Double, sheetY: Double, hinge: HingeJoint, group: String) {
         addBistable(id,
-            Vec3(FIELD_CENTER + sheetX, FIELD_CENTER + sheetY, TAG_HEIGHT_AT_LEVEL), hinge, REST_ANGLE, group)
+            Vec3(FIELD_CENTER_PEDRO.inches + sheetX, FIELD_CENTER_PEDRO.inches + sheetY, TAG_HEIGHT_AT_LEVEL), hinge, REST_ANGLE, group)
     }
 
     val tagMap = AprilTagMap().apply {

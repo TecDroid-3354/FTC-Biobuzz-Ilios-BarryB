@@ -21,11 +21,11 @@ import kotlin.math.sin
  * @param cameraPitchUp      camera tilt above horizontal (rad, positive = lens pointing up).
  */
 class TurretCameraMount(
-    val pivotInRobot: Vec2,
-    val cameraInTurret: Vec2,
-    val cameraYawOnTurret: Double,
-    val cameraHeight: Double,
-    val cameraPitchUp: Double
+    val pivotInRobot: Vec2 = Vec2(0.0, 0.0),
+    val cameraInTurret: Vec2 = Vec2(0.0, 0.0),
+    val cameraYawOnTurret: Double = 0.0,
+    val cameraHeight: Double = 0.1,
+    val cameraPitchUp: Double = 0.0
 ) {
     init {
         require(cameraHeight > 0.0) { "Measure the Limelight's lens height above the floor and set it in LocalizationConstants.mount" }
