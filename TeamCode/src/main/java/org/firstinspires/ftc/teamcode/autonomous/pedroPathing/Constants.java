@@ -28,6 +28,7 @@ import java.util.Optional;
  */
 public class Constants {
 
+    // TODO Tune mecanum as motor directions will probably change
     public static MecanumConfig drivetrainConfig = PedroPathing.INSTANCE.createMecanumConfig(
             Optional.of(DcMotorSimple.Direction.FORWARD),
             Optional.of(DcMotorSimple.Direction.REVERSE),
@@ -37,6 +38,7 @@ public class Constants {
             Optional.of(0.01)
     );
 
+    // TODO tune localizer again
     public static PinpointConfig localizerConfig = PedroPathing.INSTANCE.createPinpointConfig(
             Optional.of(GoBildaPinpointDriver.EncoderDirection.FORWARD),
             Optional.of(GoBildaPinpointDriver.EncoderDirection.FORWARD),
@@ -44,7 +46,7 @@ public class Constants {
             Optional.of(Distance.fromInches(-6.087658499169537))
     );
 
-
+    // TODO Tune new chassis
     public static ForesightConfig foresightConfig = PedroPathing.INSTANCE.createForesightConfig(
             Optional.of(LinearVelocity.fromInps(76.35614907285614)),
             Optional.of(LinearVelocity.fromInps(56.70816675683559)),

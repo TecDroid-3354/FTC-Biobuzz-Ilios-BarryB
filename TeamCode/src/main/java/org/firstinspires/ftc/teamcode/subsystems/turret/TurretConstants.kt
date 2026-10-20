@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.utils.devices.configurations.servoControlM
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Voltage
 
+// TODO Before test validate these values
 object TurretConstants {
 
     object Identification {

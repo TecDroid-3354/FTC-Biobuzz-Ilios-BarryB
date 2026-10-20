@@ -18,6 +18,7 @@ object DriveMultipliers {
     const val CONTROLLER_SOTM_ANGULAR_MULTIPLIER    : Double    = 0.6
 }
 
+// TODO edit tolerances if needed
 object SubsystemTolerances {
     val FLYWHEEL_RPM_TOLERANCE = AngularVelocity.fromRpm(40.0)
     val FLYWHEEL_HARD_STOP_ANGLE_TOLERANCE = Angle.fromDegrees(30.0)
@@ -28,6 +29,7 @@ object SubsystemTolerances {
     val INDEXER_RPM_TOLERANCE = AngularVelocity.fromRpm(20.0)
 }
 
+// TODO Get actual limits
 object SubsystemLimits {
     val INTAKE_ROLLERS_MAX_VELOCITY = AngularVelocity(0.0)..AngularVelocity(6000.0 / IntakeRollersConstants.Mechanical.GEAR_RATIO)
     val INTAKE_DEPLOY_ANGLE_LIMITS = Angle.fromDegrees(0.0)..Angle.fromDegrees(90.0)
@@ -38,6 +40,7 @@ object SubsystemLimits {
     val FLYWHEEL_HARD_STOP_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
 }
 
+// TODO Get actual target values
 object SubsystemPresetTargets {
     // Intake Rollers Preset RPM Targets //
     val INTAKE_ROLLERS_FLOOR_RPM = AngularVelocity.fromRpm(4000.0)
@@ -97,6 +100,7 @@ object SubsystemConfigurableTargets {
     var FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE = 0.0
 }
 
+// TODO Tune everything
 @Configurable
 object SubsystemControlGains {
     // Mecanum Angle PID Controller //

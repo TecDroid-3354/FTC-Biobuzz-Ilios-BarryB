@@ -50,7 +50,7 @@ class Robot(
     /* Initialize your teleop controller commands here */
     override fun initTeleOp() {
         // Chassis default command
-        drive.setPose(Pose(70.75, 132.0, 0.0))
+        drive.setPose(Pose(0.0, 0.0))
         drive.defaultCommand = drive.driveFollowingDriverInput()
 
         // Configure Control Bindings

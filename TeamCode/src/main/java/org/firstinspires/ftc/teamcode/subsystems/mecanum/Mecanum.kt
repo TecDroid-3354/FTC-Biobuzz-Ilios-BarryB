@@ -7,7 +7,6 @@ import com.pedropathing.follower.ManualDrive
 import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.seattlesolvers.solverslib.command.Command
-import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
@@ -154,14 +153,6 @@ class Mecanum(
     }
 
     /**
-     * Gets the Follower's current position.
-     * @return a [Pose2D] containing the robot's current position in the standard FTC Coordinates
-     */
-    fun getRawPose(): Pose {
-        return follower.pose()
-    }
-
-    /**
      * Gets the [Follower]'s rotation component.
      * @return a [Rotation2d] as the robot's current heading in radians.
      */
@@ -251,7 +242,7 @@ class Mecanum(
 
         val pathResult = Weaver.builder()
             .start(poseAsPoint)
-            .obstacles(Zones.HIVE_BOTTOM_BAR, Zones.HIVE_TOP_BAR)
+            .obstacles(Zones.HIVE_FRAME_BOTTOM_BAR, Zones.HIVE_FRAME_TOP_BAR)
             .addTarget(targetPose.toPoint())
             .build()
 

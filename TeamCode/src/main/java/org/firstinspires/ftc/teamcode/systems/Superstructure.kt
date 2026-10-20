@@ -13,10 +13,10 @@ import com.seattlesolvers.solverslib.command.WaitUntilCommand
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import com.seattlesolvers.solverslib.geometry.Pose2d
 import com.seattlesolvers.solverslib.geometry.Rotation2d
-import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.skeletonarmy.marrow.zones.PolygonZone
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions
 import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
 import org.firstinspires.ftc.teamcode.constants.RobotDimensions
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
@@ -68,12 +68,12 @@ class Superstructure(
     // ---------------------------------------------------------------- //
     // - Useful variables (Velocities, distances and dynamic targets) - //
     // ---------------------------------------------------------------- //
-    private val scoringTargets: ScoringTargets = ScoringTargets(alliance)
     private var robotToTurretPose: Pose2d = Pose2d()
     private var robotZone = PolygonZone(RobotDimensions.ROBOT_WIDTH.inches, RobotDimensions.ROBOT_LENGTH.inches)
     private var turretDistanceToTarget: Distance = Distance(0.0)
     private var robotRadialVelocityToTarget: LinearVelocity = LinearVelocity(0.0)
     private var robotTangentialVelocityToTarget: LinearVelocity = LinearVelocity(0.0)
+    private var scoringTarget = Pose(0.0, 0.0)
 
     init {
         subsystemInitialization()
@@ -117,19 +117,19 @@ class Superstructure(
         // Updates the Turret's distance to the current scoring target.
         turretDistanceToTarget = Distance.fromMeters(
             hypot(
-                getScoringTarget().get().x.minus(robotToTurretPose.x),
-                getScoringTarget().get().y.minus(robotToTurretPose.y)
+                getScoringTarget().get().x().minus(robotToTurretPose.x),
+                getScoringTarget().get().y().minus(robotToTurretPose.y)
             )
         )
 
         // Updates the robot's radial velocity to the current scoring target
         robotRadialVelocityToTarget = mecanum.getRobotRadialVelocity(
-            getScoringTarget().get()
+            getScoringTarget().get().toTranslation2d()
         )
 
         // Updates the robot's tangential velocity to the current scoring target
         robotTangentialVelocityToTarget = mecanum.getRobotTangentialVelocity(
-            getScoringTarget().get()
+            getScoringTarget().get().toTranslation2d()
         )
     }
 
@@ -140,9 +140,8 @@ class Superstructure(
     /**
      * Sets the [Mecanum] default command and its initial [pose] in teleoperated init.
      */
-    fun setDriveDefaultCommandAndInitialPose(pose: Pose) {
+    fun setDriveDefaultCommand() {
         mecanum.defaultCommand = mecanum.driveFieldRelative()
-        mecanum.setPose(pose)
     }
 
     /**
@@ -150,15 +149,20 @@ class Superstructure(
      * by [DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER] for angular movement.
      * Called for shooting on the move.
      */
-    fun setDriveScaledSOTMCommand(): Command {
+    fun setDriveSOTMCommand(): Command {
         return mecanum.driveFieldRelativeScaled(
             Optional.of(DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER)
             //Optional.of(DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER)
         )
     }
 
-    /** Sets the [Mecanum] starting [pose] in autonomous */
-    fun setStartingPose(pose: Pose) {
+    /**
+     * Sets the [Mecanum] starting [pose].
+     *  If called inside [org.firstinspires.ftc.teamcode.Robot.initAuto], pass the same argument.
+     *  If called inside [org.firstinspires.ftc.teamcode.Robot.initTeleOp], pass the [PoseStorage.autonomousEndPose].
+     *  No other uses will be required.
+     */
+    fun setPose(pose: Pose) {
         mecanum.setPose(pose)
     }
 
@@ -171,13 +175,36 @@ class Superstructure(
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
-    fun isDriveOnLeftSide(): BooleanSupplier {
+    private fun isDriveOnLeftSide(): BooleanSupplier {
         return { robotZone.isFullyInside(Zones.LEFT_SIDE) }
     }
 
     /** Based on the robot's position on the field (left/right side) returns the current scoring target. */
-    fun getScoringTarget(): Supplier<Translation2d> {
-        return { if (isDriveOnLeftSide().asBoolean) scoringTargets.leftHivePose.toTranslation2d() else scoringTargets.rightHivePose.toTranslation2d() }
+    private fun getScoringTarget(): Supplier<Pose> {
+        return Supplier {
+            scoringTarget = when (alliance) {
+                Alliance.RED -> getRedScoringTarget()
+                Alliance.BLUE -> getBlueScoringTarget()
+            }
+
+            scoringTarget
+        }
+    }
+
+    private fun getRedScoringTarget(): Pose {
+        return if (robotZone.position.y > FieldDimensions.RED_HIVE_CENTER_REFERENCE.y) {
+            if (isDriveOnLeftSide().asBoolean) ScoringTargets.RED_HIVE_LEFT_BOTTOM_TARGET else ScoringTargets.RED_HIVE_RIGHT_BOTTOM_TARGET
+        } else {
+            if (isDriveOnLeftSide().asBoolean) ScoringTargets.RED_HIVE_LEFT_TOP_TARGET else ScoringTargets.RED_HIVE_RIGHT_TOP_TARGET
+        }
+    }
+
+    private fun getBlueScoringTarget(): Pose {
+        return if (robotZone.position.y > FieldDimensions.BLUE_HIVE_CENTER_REFERENCE.y) {
+            if (isDriveOnLeftSide().asBoolean) ScoringTargets.BLUE_HIVE_LEFT_BOTTOM_TARGET else ScoringTargets.BLUE_HIVE_RIGHT_BOTTOM_TARGET
+        } else {
+            if (isDriveOnLeftSide().asBoolean) ScoringTargets.BLUE_HIVE_LEFT_TOP_TARGET else ScoringTargets.BLUE_HIVE_RIGHT_TOP_TARGET
+        }
     }
 
     // --------------- -------- -------- --------------- //
@@ -271,7 +298,7 @@ class Superstructure(
         return setTurretCalculatedAngle(
             {
                 mecanum.getAngleFromRobotToTarget(
-                    if (isDriveOnLeftSide().asBoolean) scoringTargets.leftHivePose.toTranslation2d() else scoringTargets.rightHivePose.toTranslation2d(),
+                    scoringTarget.toTranslation2d(),
                 ).minus(getTurretYawCorrection(
                     getVirtualDistance(turretDistanceToTarget)
                 ))
@@ -461,6 +488,11 @@ class Superstructure(
     // -------------- TURRET COMMANDS --------------- //
     // --------------- ----- -------- --------------- //
 
+    /** Sets the turret default command, which targets the hive depending on the field zone the robot's in. */
+    fun setTurretDefaultCommand() {
+        turret.defaultCommand = setTurretCalculatedAngleSequence()
+    }
+
     /** Calculates the angle the pollen will acquire once ejected from the turret due to the
      * effect of [robotTangentialVelocityToTarget], the offset is ought to be applied as
      * (theta - deltaTheta), where theta is the angle from the turret to the target
@@ -472,11 +504,6 @@ class Superstructure(
         val correction = atan2(tangentialVelocity.mps, projectileVelocityMps)
 
         return Rotation2d(correction)
-    }
-
-    /** Sets the turret default command, which targets the hive depending on the field zone the robot's in. */
-    fun setTurretDefaultCommand() {
-        turret.defaultCommand = setTurretCalculatedAngleSequence()
     }
 
     /** Enables the configurable targets of the [Turret]. You can edit them through the Panels UI */
@@ -511,9 +538,7 @@ class Superstructure(
 
     /** Returns a [Runnable] which assigns [PoseStorage.autonomousEndPose] the [Follower]'s last value. Call [Runnable.run] for correct working */
     fun onEnd(): Runnable {
-        return {
-            PoseStorage.autonomousEndPose = follower.pose()
-        }
+        return { PoseStorage.autonomousEndPose = follower.pose() }
     }
 
     // --------------- ----- -------- --------------- //
@@ -549,7 +574,6 @@ class Superstructure(
 
     fun logOdometry() {
         telemetryM.addLine("Odometry")
-        telemetryM.addData("Raw", mecanum.getRawPose())
         telemetryM.addData("Fused", mecanum.getPose())
         telemetryM.addData("Stats", poseEstimator.stats)
     }

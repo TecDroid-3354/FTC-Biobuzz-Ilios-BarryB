@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.Time
 
+// TODO Before test validate these values
 object FlywheelConstants {
 
     object Identification {

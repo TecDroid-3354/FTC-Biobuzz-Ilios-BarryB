@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfig
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 
+// TODO Before test validate these values
 object IndexerConstants {
 
     object Identification {

@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystems.shooter.flywheelHardStop
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.servoControlModeConfiguration.ServoPositionModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 
+// TODO Before test validate these values
 object FlywheelHardStopConstants {
 
     object Identification {
