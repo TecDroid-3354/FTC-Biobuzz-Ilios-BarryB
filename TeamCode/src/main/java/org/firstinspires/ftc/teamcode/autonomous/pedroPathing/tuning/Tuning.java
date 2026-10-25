@@ -1,16 +1,11 @@
 package org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning;
 
-import com.pedropathing.algorithm.Foresight;
-import com.pedropathing.revhub.drivetrains.Mecanum;
-import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.pedropathing.tuning.autotune.Procedure;
 import com.pedropathing.tuning.autotune.Tuner;
-
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.ForesightTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.MecanumTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.PinpointTuner;
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.tuning.procedures.Tests;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.MecanumTuner;
+import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.procedures.PinpointTuner;
+import org.firstinspires.ftc.teamcode.utils.autonomous.PedroPathing;
 
 /**
  * Pedro Pathing 3.0 AutoTune procedures.
@@ -36,18 +31,11 @@ public class Tuning {
 
     @Tuner
     public static Procedure foresightTuner() {
-        return new ForesightTuner(
-                hardwareMap -> new PinpointLocalizer(hardwareMap, Constants.localizerConfig),
-                hardwareMap -> new Mecanum(hardwareMap, Constants.drivetrainConfig)
-        );
+        return PedroPathing.INSTANCE.createForesightTunerWithPinpoint(Constants.drivetrainConfig, Constants.localizerConfig);
     }
 
     @Tuner
     public static Procedure tests() {
-        return new Tests(
-                hardwareMap -> new Mecanum(hardwareMap, Constants.drivetrainConfig),
-                hardwareMap -> new PinpointLocalizer(hardwareMap, Constants.localizerConfig),
-                () -> new Foresight(Constants.foresightConfig)
-        );
+        return PedroPathing.INSTANCE.createFullMecanumTestWithPinpoint(Constants.drivetrainConfig, Constants.localizerConfig, Constants.foresightConfig);
     }
 }

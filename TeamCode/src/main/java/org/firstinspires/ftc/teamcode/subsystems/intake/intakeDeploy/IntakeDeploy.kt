@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
+import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -25,6 +26,8 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     private var intakeDeployTargetAngle: Angle = Angle(0.0)
 
+    private var configurableIntakeDeployAngle: Angle = Angle(0.0)
+
     init {
         // Initialization code
         configureServos()
@@ -35,6 +38,15 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
         if (leadIntakeDeployServo.hadRTPCoefficientsUpdated(SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF)) {
             updateIntakeDeployPIDF(SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF)
         }
+
+        if (configurableIntakeDeployAngle.degrees.equals(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES).not()) {
+            updateIntakeDeployConfigurableAngle(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES)
+        }
+    }
+
+    /** Updates [configurableIntakeDeployAngle] with the value of [SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES]*/
+    private fun updateIntakeDeployConfigurableAngle(newIntakeDeployConfigurableAngleDegrees: Double) {
+        configurableIntakeDeployAngle = Angle.fromDegrees(newIntakeDeployConfigurableAngleDegrees)
     }
 
     /**
@@ -48,42 +60,44 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * A [Runnable] which sets a new angle to the [IntakeDeploy] with the given [Angle] after being clamped
-     * by the [SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS].
-     * @param angle the desired [Angle]
-     * @return a [Runnable] which sets the new angle
+     * Sets the floor intake angle to [SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE] value.
+     * @return a [Runnable] which sets a new angle.
      */
-    private fun setIntakeDeployAngle(angle: Angle): Runnable {
+    fun setIntakeDeployFloorAngle(): Runnable {
         return {
-            intakeDeployTargetAngle = angle.coerceIn(SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS)
+            intakeDeployTargetAngle = SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE
 
-            leadIntakeDeployServo.runToPosition(angle)
-            followerIntakeDeployServo.runToPosition(angle)
+            leadIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
+            followerIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
         }
     }
 
     /**
-     * Calls [setIntakeDeployAngle] and sets the floor intake angle to [SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets a new angle.
+     * Sets the flower intake angle to [SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE] value.
+     * @return a [Runnable] which sets a new angle.
      */
-    fun setIntakeDeployFloorAngle(): Command {
-        return setIntakeDeployAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE).InstantCommand(this)
+    fun setIntakeDeployFlowerAngle(): Runnable {
+        return {
+            intakeDeployTargetAngle = SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE
+
+            leadIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
+            followerIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
+        }
     }
 
     /**
-     * Calls [setIntakeDeployAngle] and sets the flower intake angle to [SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets a new angle.
+     * Sets the intake deploy angle to [SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES] value.
+     * @return a [Runnable] which sets a new angle.
      */
-    fun setIntakeDeployFlowerAngle(): Command {
-        return setIntakeDeployAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE).InstantCommand(this)
-    }
+    fun setIntakeDeployConfigurableAngle(): Runnable {
+        return {
+            val clampedAngleDegrees = MathUtils.clamp(configurableIntakeDeployAngle.degrees,
+                SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS.start.degrees, SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS.endInclusive.degrees)
+            intakeDeployTargetAngle = Angle.fromDegrees(clampedAngleDegrees)
 
-    /**
-     * Calls [setIntakeDeployAngle] and sets the intake deploy angle to [SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets a new angle.
-     */
-    fun setIntakeDeployConfigurableAngle(): Command {
-        return setIntakeDeployAngle(Angle.fromDegrees(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES)).InstantCommand(this)
+            leadIntakeDeployServo.runToPosition(intakeDeployTargetAngle)
+            followerIntakeDeployServo.runToPosition(intakeDeployTargetAngle)
+        }
     }
 
     /**

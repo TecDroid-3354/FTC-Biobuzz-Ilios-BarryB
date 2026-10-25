@@ -8,7 +8,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.BLUE_GARDEN_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.BLUE_HIVE_CENTER_REFERENCE
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.BLUE_LOADING_ZONE_CENTER
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.BOTTOM_FLOWER_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.FIELD_CENTER_PEDRO
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.FLOWER_WIDTH
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.GARDEN_DEPTH_Y
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.GARDEN_WIDTH_X
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.HIVE_FRAME_CENTER_IN_FIELD
@@ -17,13 +19,16 @@ import org.firstinspires.ftc.teamcode.utils.autonomous.MirroredPoseFactory
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.HIVE_FRAME_WIDTH_Y
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.HIVE_FRAME_DEPTH_X
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.LEFT_FLOWER_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.LEFT_SIDE_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.LOADING_ZONE_DEPTH
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.LOADING_ZONE_WIDTH
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.RED_GARDEN_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.RED_HIVE_CENTER_REFERENCE
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.RED_LOADING_ZONE_CENTER
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.RIGHT_FLOWER_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.RIGHT_SIDE_CENTER
+import org.firstinspires.ftc.teamcode.constants.FieldDimensions.TOP_FLOWER_CENTER
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.X_AXIS_WIDTH
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions.Y_AXIS_HEIGHT
 import org.firstinspires.ftc.teamcode.utils.extensions.toTranslation2d
@@ -61,19 +66,31 @@ object FieldDimensions {
 
     val LEFT_SIDE_CENTER = Point(35.0, 70.75)
     val RIGHT_SIDE_CENTER = Point(35.0, 70.75)
+
+    // ---- FLOWER  ---- //
+
+    val FLOWER_WIDTH = Distance.fromInches(2.4 + 1.89)
+    val TOP_FLOWER_CENTER = Point(47.0, 139.0)
+    val BOTTOM_FLOWER_CENTER = Point(94.0, 2.0)
+    val RIGHT_FLOWER_CENTER = Point(139.0, 94.0)
+    val LEFT_FLOWER_CENTER = Point(2.0, 47.0)
 }
 
 // TODO Confirm the veracity of these values.
 object Zones {
     val HIVE_FRAME = PolygonZone(HIVE_FRAME_CENTER_IN_FIELD, HIVE_FRAME_WIDTH_Y.inches, HIVE_FRAME_DEPTH_X.inches)
-    val HIVE_FRAME_TOP_BAR = PolygonZone(Point(70.75.minus(HIVE_FRAME_DEPTH_X.inches / 2), 70.75.plus(HIVE_FRAME_WIDTH_Y.inches / 2)), Point(70.75.plus(HIVE_FRAME_DEPTH_X.inches / 2), 70.75.plus(HIVE_FRAME_WIDTH_Y.inches / 2)), 4.0)
-    val HIVE_FRAME_BOTTOM_BAR = PolygonZone(Point(70.75.minus(HIVE_FRAME_DEPTH_X.inches / 2), 70.75.minus(HIVE_FRAME_WIDTH_Y.inches / 2)), Point(70.75.plus(HIVE_FRAME_DEPTH_X.inches / 2), 70.75.minus(HIVE_FRAME_WIDTH_Y.inches / 2)), 4.0)
+    val HIVE_FRAME_TOP_BAR = PolygonZone(Point(FIELD_CENTER_PEDRO.inches, FIELD_CENTER_PEDRO.inches + HIVE_FRAME_WIDTH_Y.inches / 2.0), HIVE_FRAME_DEPTH_X.inches, 4.0)
+    val HIVE_FRAME_BOTTOM_BAR = PolygonZone(Point(FIELD_CENTER_PEDRO.inches, FIELD_CENTER_PEDRO.inches - HIVE_FRAME_WIDTH_Y.inches / 2.0), HIVE_FRAME_DEPTH_X.inches, 4.0)
     val RED_LOADING_ZONE = PolygonZone(RED_LOADING_ZONE_CENTER, LOADING_ZONE_WIDTH.inches, LOADING_ZONE_DEPTH.inches)
     val BLUE_LOADING_ZONE = PolygonZone(BLUE_LOADING_ZONE_CENTER, LOADING_ZONE_WIDTH.inches, LOADING_ZONE_DEPTH.inches)
     val RED_GARDEN = PolygonZone(RED_GARDEN_CENTER, GARDEN_WIDTH_X.inches, GARDEN_DEPTH_Y.inches)
     val BLUE_GARDEN = PolygonZone(BLUE_GARDEN_CENTER, GARDEN_WIDTH_X.inches, GARDEN_DEPTH_Y.inches)
     val LEFT_SIDE = PolygonZone(LEFT_SIDE_CENTER, FIELD_CENTER_PEDRO.inches, Y_AXIS_HEIGHT.inches)
     val RIGHT_SIDE = PolygonZone(RIGHT_SIDE_CENTER, FIELD_CENTER_PEDRO.inches, Y_AXIS_HEIGHT.inches)
+    val TOP_FLOWER = PolygonZone(TOP_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
+    val BOTTOM_FLOWER = PolygonZone(BOTTOM_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
+    val RIGHT_FLOWER = PolygonZone(RIGHT_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
+    val LEFT_FLOWER = PolygonZone(LEFT_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
 }
 
 object ScoringTargets {

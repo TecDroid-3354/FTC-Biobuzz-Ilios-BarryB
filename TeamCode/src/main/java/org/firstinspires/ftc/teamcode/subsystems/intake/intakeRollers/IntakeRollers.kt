@@ -4,8 +4,10 @@ import com.bylazar.telemetry.TelemetryManager
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
+import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -13,33 +15,42 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
-import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import kotlin.math.abs
 
-@Suppress("JoinDeclarationAndAssignment")
-class IntakeRollers(hardwareMap: HardwareMap): SubsystemBase() {
+class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
-    private var intakeRollersMotor: OpMotorEx
+    private lateinit var leadIntakeRollersMotor: OpMotorEx
+    private lateinit var followerIntakeRollersMotor: OpMotorEx
 
     private var intakeRollersTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+
+    private var configurableIntakeRollersVelocity: AngularVelocity = AngularVelocity(0.0)
     
     init {
         // Initialization code
-        intakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.INTAKE_ROLLERS_MOTOR_ID)
-        intakeRollersMotor.applyConfigurationAndResetEncoder(IntakeRollersConstants.Configuration.intakeRollersConfiguration)
+        configureMotors()
     }
 
     /** Runs every cycle */
     override fun periodic() {
-        if (intakeRollersMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID)
-            || intakeRollersMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)) {
+        if (leadIntakeRollersMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID)
+            || leadIntakeRollersMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)) {
             updateIntakeRollersControlGains(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID, SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)
+        }
+
+        if (configurableIntakeRollersVelocity.rpm.equals(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM).not()) {
+            updateIntakeRollersConfigurableVelocity(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM)
         }
     }
 
+    /** Updates [configurableIntakeRollersVelocity] with the value of [SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM] */
+    private fun updateIntakeRollersConfigurableVelocity(newIntakeRollersVelocityRPM: Double) {
+        configurableIntakeRollersVelocity = AngularVelocity.fromRpm(newIntakeRollersVelocityRPM)
+    }
+
     /**
-     * Updates the [intakeRollersMotor]'s [com.qualcomm.robotcore.hardware.PIDCoefficients] and [SimpleMotorFeedforward]'s coefficients
+     * Updates the [leadIntakeRollersMotor]'s [com.qualcomm.robotcore.hardware.PIDCoefficients] and [SimpleMotorFeedforward]'s coefficients
      * by applying a new configuration.
      * @param pidCoefficients the new [PIDCoefficients]
      * @param feedforward the new [SimpleMotorFeedforward] Coefficients
@@ -49,69 +60,82 @@ class IntakeRollers(hardwareMap: HardwareMap): SubsystemBase() {
             .withVelocityCoefficients(pidCoefficients)
             .withFeedforwardCoefficients(feedforward)
 
-        intakeRollersMotor.applyModeConfiguration(newConfig)
+        leadIntakeRollersMotor.applyModeConfiguration(newConfig)
     }
 
     /**
-     * A [Runnable] which enables the intake rollers with the given [AngularVelocity] after being clamped
-     * by the [SubsystemLimits.INTAKE_ROLLERS_MAX_VELOCITY] limit.
-     * @param velocity the desired [AngularVelocity]
-     * @return a [Runnable] which enables the rollers
+     * Enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM] value.
+     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
      */
-    private fun enableIntakeRollersWithVelocity(velocity: AngularVelocity): Runnable {
+    fun enableIntakeRollersFloorVelocity(): Runnable {
         return {
-            intakeRollersTargetVelocity = velocity.coerceIn(SubsystemLimits.INTAKE_ROLLERS_MAX_VELOCITY)
+            intakeRollersTargetVelocity = SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM
 
-            intakeRollersMotor.setVelocity(velocity)
+            leadIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM)
+            followerIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM)
         }
     }
 
     /**
-     * Calls [enableIntakeRollersWithVelocity] and enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
-     */
-    fun enableIntakeRollersFloorVelocity(): Command {
-        return enableIntakeRollersWithVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM).InstantCommand(this)
-    }
-
-    /**
-     * Calls [enableIntakeRollersWithVelocity] and enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM] value.
+     * Enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM] value.
      * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
      */
-    fun enableIntakeRollersFlowerVelocity(): Command {
-        return enableIntakeRollersWithVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM).InstantCommand(this)
+    fun enableIntakeRollersFlowerVelocity(): Runnable {
+        return {
+            intakeRollersTargetVelocity = SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM
+
+            leadIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM)
+            followerIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM)
+        }
     }
 
     /**
-     * Calls [enableIntakeRollersWithVelocity] and enables the rollers with the [SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM] value.
+     * Enables the rollers with the [SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM] value.
      * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
      */
-    fun enableIntakeRollersConfigurableVelocity(): Command {
-        return enableIntakeRollersWithVelocity(AngularVelocity.fromRpm(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM)).InstantCommand(this)
+    fun enableIntakeRollersConfigurableVelocity(): Runnable {
+        return {
+            val clampedVelocityRPM = MathUtils.clamp(configurableIntakeRollersVelocity.rpm,
+                SubsystemLimits.INTAKE_ROLLERS_MAX_VELOCITY.start.rpm, SubsystemLimits.INTAKE_ROLLERS_MAX_VELOCITY.endInclusive.rpm)
+            intakeRollersTargetVelocity = AngularVelocity.fromRpm(clampedVelocityRPM)
+
+            leadIntakeRollersMotor.setVelocity(configurableIntakeRollersVelocity)
+            followerIntakeRollersMotor.setVelocity(configurableIntakeRollersVelocity)
+        }
     }
 
     /**
      * Creates an [com.seattlesolvers.solverslib.command.InstantCommand] based off the [OpMotorEx.stopMotor] method.
      */
     fun stopIntakeRollers(): Command {
-        return intakeRollersMotor.stopMotor().InstantCommand(this)
+        return InstantCommand({
+            intakeRollersTargetVelocity = AngularVelocity(0.0)
+            leadIntakeRollersMotor.stopMotor()
+            followerIntakeRollersMotor.stopMotor()
+        }, this)
     }
 
-    /**
-     * @return whether the intake rollers have reached its target
-     */
+    /** @return whether the intake rollers have reached its target */
     fun getIsAtTarget(): Boolean {
         if (intakeRollersTargetVelocity < IntakeRollersConstants.Mechanical.TARGET_VELOCITY_THRESHOLD) return false
 
         return abs(
-            (intakeRollersTargetVelocity.minus(intakeRollersMotor.getVelocity().get())).rpm
+            (intakeRollersTargetVelocity.minus(leadIntakeRollersMotor.getVelocity().get())).rpm
         ) < SubsystemTolerances.INTAKE_ROLLERS_RPM_TOLERANCE.rpm
     }
 
     // Logs useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Intake Rollers")
-        telemetry.addData("Intake Rollers Velocity RPM", intakeRollersMotor.getVelocity().get().rpm)
-        telemetry.addData("Intake Rollers Target Velocity RPM", intakeRollersMotor.getVelocity().get().rpm)
+        telemetry.addData("Intake Rollers Velocity RPM", leadIntakeRollersMotor.getVelocity().get().rpm)
+        telemetry.addData("Intake Rollers Target Velocity RPM", leadIntakeRollersMotor.getVelocity().get().rpm)
+    }
+
+    private fun configureMotors() {
+        leadIntakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.LEAD_INTAKE_ROLLERS_MOTOR_ID)
+        leadIntakeRollersMotor.applyConfigurationAndResetEncoder(IntakeRollersConstants.Configuration.leadMotorConfiguration)
+
+        followerIntakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.LEAD_INTAKE_ROLLERS_MOTOR_ID)
+        followerIntakeRollersMotor.applyConfigurationAndResetEncoder(IntakeRollersConstants.Configuration.followerMotorConfiguration)
     }
 }

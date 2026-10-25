@@ -1,9 +1,10 @@
 package org.firstinspires.ftc.teamcode.systems
 
 import com.bylazar.telemetry.TelemetryManager
-import org.firstinspires.ftc.robotcore.external.Supplier
+import java.util.function.Supplier
 import com.pedropathing.follower.Follower
 import com.pedropathing.math.Pose
+import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup
@@ -33,6 +34,7 @@ import org.firstinspires.ftc.teamcode.subsystems.turret.Turret
 import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
+import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.extensions.toPose2d
 import org.firstinspires.ftc.teamcode.utils.extensions.toTranslation2d
 import org.firstinspires.ftc.teamcode.utils.localization.PoseEstimator
@@ -82,7 +84,7 @@ class Superstructure(
     private fun subsystemInitialization() {
         // Follower Initialization
         follower = Constants.createFollower(hardwareMap)
-        // Turret Initialization
+        //Turret Initialization
         turret = Turret(hardwareMap)
         // Pose Estimator Intialization
         poseEstimator = PoseEstimator(
@@ -162,8 +164,17 @@ class Superstructure(
      *  If called inside [org.firstinspires.ftc.teamcode.Robot.initTeleOp], pass the [PoseStorage.autonomousEndPose].
      *  No other uses will be required.
      */
-    fun setPose(pose: Pose) {
-        mecanum.setPose(pose)
+    fun setPose(pose: Pose?) {
+        mecanum.setPose(pose ?: Pose(0.0, 0.0, 0.0))
+    }
+
+    /** Sets the remembered autonomous pose to teleoperated */
+    fun setLastAutonomousPose() {
+        setPose(PoseStorage.autonomousEndPose)
+    }
+
+    fun followPathCommand(path: Path, holdEnd: Boolean, maxPower: Double): Command {
+        return mecanum.followPathCMD(path, holdEnd, maxPower)
     }
 
     /**
@@ -297,8 +308,8 @@ class Superstructure(
     fun setTurretCalculatedAngleSequence(): Command {
         return setTurretCalculatedAngle(
             {
-                mecanum.getAngleFromRobotToTarget(
-                    scoringTarget.toTranslation2d(),
+                mecanum.getAngleFromSubsystemToTarget(
+                    scoringTarget.toTranslation2d(), robotToTurretPose.translation,
                 ).minus(getTurretYawCorrection(
                     getVirtualDistance(turretDistanceToTarget)
                 ))
@@ -313,17 +324,17 @@ class Superstructure(
 
     /** Enables the configurable targets of the [Indexer]. You can edit them through the Panels UI */
     fun setIndexerConfigurableControl(): Command {
-        return indexer.enableIndexerConfigurableVelocity()
+        return indexer.enableIndexerConfigurableVelocity().InstantCommand(indexer)
     }
 
     /** Enables the preset velocity for shooting value of the [Indexer]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIndexerShootingPreset(): Command {
-        return indexer.enableIndexerShootingVelocity()
+        return indexer.enableIndexerShootingVelocity().InstantCommand(indexer)
     }
 
     /** Enables the preset idle velocity value of the [Indexer]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIndexerIdlePreset(): Command {
-        return indexer.enableIndexerIdleVelocity()
+        return indexer.enableIndexerIdleVelocity().InstantCommand(indexer)
     }
 
     /** Stops the [Indexer] */
@@ -343,17 +354,17 @@ class Superstructure(
 
     /** Enables the configurable targets of the [IntakeDeploy]. You can edit them through the Panels UI */
     fun setIntakeDeployConfigurableControl(): Command {
-        return intakeDeploy.setIntakeDeployConfigurableAngle()
+        return intakeDeploy.setIntakeDeployConfigurableAngle().InstantCommand(intakeDeploy)
     }
 
     /** Enables the preset floor intake angle value of the [IntakeDeploy]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIntakeDeployFloorAngle(): Command {
-        return intakeDeploy.setIntakeDeployFloorAngle()
+        return intakeDeploy.setIntakeDeployFloorAngle().InstantCommand(intakeDeploy)
     }
 
     /** Enables the preset flower intake angle value of the [IntakeDeploy]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIntakeDeployFlowerAngle(): Command {
-        return intakeDeploy.setIntakeDeployFlowerAngle()
+        return intakeDeploy.setIntakeDeployFlowerAngle().InstantCommand(intakeDeploy)
     }
 
     /** Returns whether the [IntakeDeploy] has reached its angle target */
@@ -367,17 +378,17 @@ class Superstructure(
 
     /** Enables the configurable targets of the [IntakeRollers]. You can edit them through the Panels UI */
     fun setIntakeRollersConfigurableControl(): Command {
-        return intakeRollers.enableIntakeRollersConfigurableVelocity()
+        return intakeRollers.enableIntakeRollersConfigurableVelocity().InstantCommand(intakeRollers)
     }
 
     /** Enables the preset floor intake velocity value of the [IntakeRollers]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIntakeRollersFloorVelocity(): Command {
-        return intakeRollers.enableIntakeRollersFloorVelocity()
+        return intakeRollers.enableIntakeRollersFloorVelocity().InstantCommand(intakeRollers)
     }
 
     /** Enables the preset flower intake velocity value of the [IntakeRollers]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIntakeRollersFlowerVelocity(): Command {
-        return intakeRollers.enableIntakeRollersFlowerVelocity()
+        return intakeRollers.enableIntakeRollersFlowerVelocity().InstantCommand(intakeRollers)
     }
 
     /** Stops the [IntakeRollers] */
@@ -412,7 +423,12 @@ class Superstructure(
 
     /** Enables the configurable targets of the [Flywheel]. You can edit them through the Panels UI */
     fun setFlywheelConfigurableControl(): Command {
-        return flywheel.setFlywheelConfigurableVelocity()
+        return flywheel.setFlywheelConfigurableVelocity().InstantCommand(flywheel)
+    }
+
+    /** Enables the [Flywheel] with a calculated velocity based on the virtual distance and the robot's radial velocity */
+    fun setFlywheelPresetVelocity(): Command {
+        return flywheel.setFlywheelPresetVelocity().InstantCommand(flywheel)
     }
 
     /** Enables the [Flywheel] with a calculated velocity based on the virtual distance and the robot's radial velocity */
@@ -436,17 +452,17 @@ class Superstructure(
 
     /** Enables the configurable targets of the [FlywheelHardStop]. You can edit them through the Panels UI */
     fun setFlywheelHardStopConfigurableControl(): Command {
-        return flywheelHardStop.setFlywheelHardStopConfigurableAngle()
+        return flywheelHardStop.setFlywheelHardStopConfigurableAngle().InstantCommand(flywheelHardStop)
     }
 
     /** Clears the pathway to the [Flywheel] */
     fun clearPathToFlywheel(): Command {
-        return flywheelHardStop.setFlywheelHardStopClearingAngle()
+        return flywheelHardStop.setFlywheelHardStopClearingAngle().InstantCommand(flywheelHardStop)
     }
 
     /** Blocks the pathway to the [Flywheel] */
     fun blockPathToFlywheel(): Command {
-        return flywheelHardStop.setFlywheelHardStopBlockingAngle()
+        return flywheelHardStop.setFlywheelHardStopBlockingAngle().InstantCommand(flywheelHardStop)
     }
 
     /** Returns whether the [FlywheelHardStop] has reached its angle target */
@@ -461,22 +477,22 @@ class Superstructure(
 
     /** Enables the configurable targets of the [Hood]. You can edit them through the Panels UI */
     fun setHoodConfigurableControl(): Command {
-        return hood.setHoodConfigurableAngle()
+        return hood.setHoodConfigurableAngle().InstantCommand(hood)
+    }
+
+    /** Sets the [Hood] to its home angle (0.0°) */
+    fun setHoodHomeAngle(): Command {
+        return hood.setHoodHomeAngle().InstantCommand(hood)
+    }
+
+    /** Sets the [Hood] to its preset angle (90.0°) */
+    fun setHoodPresetAngle(): Command {
+        return hood.setHoodPresetAngle().InstantCommand(hood)
     }
 
     /** Enables the [Hood] with a calculated angle based on the virtual distance and the robot's radial velocity */
     fun setHoodCalculatedAngle(): Command {
         return hood.setHoodCalculatedAngle { turretDistanceToTarget }
-    }
-
-    /** Sets the [Hood] to its home angle (0.0°) */
-    fun setHoodHomeAngle(): Command {
-        return hood.setHoodHomeAngle()
-    }
-
-    /** Sets the [Hood] to its preset angle (90.0°) */
-    fun setHoodPresetAngle(): Command {
-        return hood.setHoodPresetAngle()
     }
 
     /** Returns whether the [Hood] has reached its angle target */
@@ -508,18 +524,18 @@ class Superstructure(
 
     /** Enables the configurable targets of the [Turret]. You can edit them through the Panels UI */
     fun setTurretConfigurableAngle(): Command {
-        return turret.setTurretConfigurableAngle()
+        return turret.setTurretConfigurableAngle().InstantCommand(turret)
     }
 
     /** Calculates the [Turret] relative angle to a target by subtracting the chassis current rotation by the
      * chassis target angle to the target */
     fun setTurretCalculatedAngle(chassisRelativeTargetAngle: Supplier<Rotation2d>, chassisCurrentRotation: Supplier<Rotation2d>): Command {
-        return turret.setCalculatedTurretAngle(chassisRelativeTargetAngle, chassisCurrentRotation)
+        return turret.setTurretCalculatedAngleCommand(chassisRelativeTargetAngle, chassisCurrentRotation)
     }
 
     /** Sets the turret to its zero angle */
     fun setTurretZeroAngle(): Command {
-        return turret.setTurretZeroAngle()
+        return turret.setTurretZeroAngle().InstantCommand(turret)
     }
 
     /** Returns whether the [Turret] has reached its angle target */
@@ -531,6 +547,10 @@ class Superstructure(
     // --------------- OPMODE RUNNABLE -------------- //
     // --------------- ----- -------- --------------- //
 
+    fun preAuto(autoCommand: Command): Runnable {
+        return { autoCommand.schedule() }
+    }
+
     /** Returns a [Runnable] which starts the Limelight. Call [Runnable.run] for correct working */
     fun preTeleop(): Runnable {
         return limelight.start()
@@ -538,7 +558,7 @@ class Superstructure(
 
     /** Returns a [Runnable] which assigns [PoseStorage.autonomousEndPose] the [Follower]'s last value. Call [Runnable.run] for correct working */
     fun onEnd(): Runnable {
-        return { PoseStorage.autonomousEndPose = follower.pose() }
+        return { PoseStorage.autonomousEndPose = mecanum.getPose() }
     }
 
     // --------------- ----- -------- --------------- //
@@ -575,6 +595,7 @@ class Superstructure(
     fun logOdometry() {
         telemetryM.addLine("Odometry")
         telemetryM.addData("Fused", mecanum.getPose())
-        telemetryM.addData("Stats", poseEstimator.stats)
+        //telemetryM.addData("Stats", poseEstimator.stats)
+        telemetryM.addData("Target", scoringTarget)
     }
 }

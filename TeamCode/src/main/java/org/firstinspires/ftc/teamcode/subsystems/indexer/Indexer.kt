@@ -1,11 +1,14 @@
 package org.firstinspires.ftc.teamcode.subsystems.indexer
 
 import com.bylazar.telemetry.TelemetryManager
+import com.qualcomm.ftccommon.configuration.EditSwapUsbDevices
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
+import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -13,7 +16,6 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
-import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import kotlin.math.abs
 
@@ -23,6 +25,8 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
     private var indexerMotor: OpMotorEx
 
     private var indexerTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+
+    private var configurableIndexerVelocity: AngularVelocity = AngularVelocity(0.0)
 
     init {
         // Initialization code
@@ -37,6 +41,17 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
             || indexerMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.INDEXER_MOTOR_FEEDFORWARD)) {
             updateIndexerMotorControlGains(SubsystemControlGains.INDEXER_MOTOR_PID, SubsystemControlGains.INDEXER_MOTOR_FEEDFORWARD)
         }
+
+        if (configurableIndexerVelocity.rpm.equals(SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM).not()) {
+            updateIndexerConfigurableVelocity(SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM)
+        }
+    }
+
+    /**
+     * Updates [configurableIndexerVelocity] with the value of [SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM]
+     */
+    private fun updateIndexerConfigurableVelocity(newIndexerVelocityRPM: Double) {
+        configurableIndexerVelocity = AngularVelocity.fromRpm(newIndexerVelocityRPM)
     }
 
     /**
@@ -54,48 +69,51 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * A [Runnable] which enables the indexer rollers with the given [AngularVelocity] after being clamped
-     * by the [SubsystemLimits.INDEXER_MAX_VELOCITY] limit.
-     * @param velocity the desired [AngularVelocity]
-     * @return a [Runnable] which enables the rollers
+     * Enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM] value.
+     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
      */
-    private fun enableIndexerWithVelocity(velocity: AngularVelocity): Runnable {
+    fun enableIndexerShootingVelocity(): Runnable {
         return {
-            indexerTargetVelocity = velocity.coerceIn(SubsystemLimits.INDEXER_MAX_VELOCITY)
+            indexerTargetVelocity = SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM
 
-            indexerMotor.setVelocity(velocity)
+            indexerMotor.setVelocity(SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM)
         }
     }
 
     /**
-     * Calls [enableIndexerWithVelocity] and enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
+     * Enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM] value.
+     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
      */
-    fun enableIndexerShootingVelocity(): Command {
-        return enableIndexerWithVelocity(SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM).InstantCommand(this)
+    fun enableIndexerIdleVelocity(): Runnable {
+        return {
+            indexerTargetVelocity = SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM
+
+            indexerMotor.setVelocity(SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM)
+        }
     }
 
     /**
-     * Calls [enableIndexerWithVelocity] and enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM] value.
+     * Enables the rollers with the [SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM] value.
      * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
      */
-    fun enableIndexerIdleVelocity(): Command {
-        return enableIndexerWithVelocity(SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM).InstantCommand(this)
-    }
+    fun enableIndexerConfigurableVelocity(): Runnable {
+        return {
+            val clampedVelocityRPM = MathUtils.clamp(configurableIndexerVelocity.rpm,
+                SubsystemLimits.INDEXER_MAX_VELOCITY.start.rpm, SubsystemLimits.INDEXER_MAX_VELOCITY.endInclusive.rpm)
+            indexerTargetVelocity = AngularVelocity.fromRpm(clampedVelocityRPM)
 
-    /**
-     * Calls [enableIndexerWithVelocity] and enables the rollers with the [SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
-     */
-    fun enableIndexerConfigurableVelocity(): Command {
-        return enableIndexerWithVelocity(AngularVelocity.fromRpm(SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM)).InstantCommand(this)
+            indexerMotor.setVelocity(configurableIndexerVelocity)
+        }
     }
 
     /**
      * Creates an [com.seattlesolvers.solverslib.command.InstantCommand] based off the [OpMotorEx.stopMotor] method.
      */
     fun stopIndexer(): Command {
-        return indexerMotor.stopMotor().InstantCommand(this)
+        return InstantCommand({
+            indexerTargetVelocity = AngularVelocity(0.0)
+            indexerMotor.stopMotor()
+        }, this)
     }
 
     /**

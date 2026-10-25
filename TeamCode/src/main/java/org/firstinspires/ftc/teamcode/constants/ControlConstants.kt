@@ -11,8 +11,8 @@ import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 
 object DriveMultipliers {
-    const val FORWARD_VELOCITY_MULTIPLIER           : Double    = 1.0
-    const val LATERAL_VELOCITY_MULTIPLIER           : Double    = 1.0
+    const val FORWARD_VELOCITY_MULTIPLIER           : Double    = -1.0
+    const val LATERAL_VELOCITY_MULTIPLIER           : Double    = -1.0
     const val TURN_VELOCITY_MULTIPLIER              : Double    = -1.0
     const val CONTROLLER_SOTM_LINEAR_MULTIPLIER     : Double    = 0.5
     const val CONTROLLER_SOTM_ANGULAR_MULTIPLIER    : Double    = 0.6

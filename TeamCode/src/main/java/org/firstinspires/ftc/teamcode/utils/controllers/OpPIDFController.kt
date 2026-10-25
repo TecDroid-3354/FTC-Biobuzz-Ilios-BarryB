@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.utils.controllers
 
+import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.qualcomm.robotcore.hardware.PIDFCoefficients
+import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -268,4 +270,12 @@ class OpPIDFController(
             return input
         }
     }
+}
+
+fun PIDCoefficients.invertSigns(): PIDCoefficients {
+    return PIDCoefficients(this.p.unaryMinus(), this.i.unaryMinus(), this.d.unaryMinus())
+}
+
+fun SimpleMotorFeedforward.invertSigns(): SimpleMotorFeedforward {
+    return SimpleMotorFeedforward(this.ks.unaryMinus(), this.kv.unaryMinus(), this.ka.unaryMinus())
 }

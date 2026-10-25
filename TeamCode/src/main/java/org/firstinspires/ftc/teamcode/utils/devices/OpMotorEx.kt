@@ -78,7 +78,7 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
      * 10 milliamps is an arbitrary value
      * @return whether the motor is connected
      */
-    fun getIsConnected(): BooleanSupplier { return { (motor.motorEx.getCurrent(CurrentUnit.MILLIAMPS) < 10.0).not() }}
+    fun getIsConnected(): BooleanSupplier { return { (motor.motorEx.getCurrent(CurrentUnit.MILLIAMPS) < 50.0).not() }}
 
     // ------ MOTOR CONTROL MODE COMMANDS -----//
     /**
@@ -147,7 +147,7 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
      * call the built-in [com.seattlesolvers.solverslib.hardware.motors.Motor.stopMotor] as it interferes with the velocity
      * mode's commands.
      */
-    fun stopMotor(): Runnable { return { motor.set(0.0) } }
+    fun stopMotor() { return motor.set(0.0) }
 
     /**
      * Checks whether the [positionController] or the [trapezoidalController]'s position is near its target or at it

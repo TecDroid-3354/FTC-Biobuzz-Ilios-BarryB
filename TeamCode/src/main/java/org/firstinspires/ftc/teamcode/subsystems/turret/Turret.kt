@@ -7,22 +7,17 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
-import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import com.seattlesolvers.solverslib.geometry.Rotation2d
+import com.seattlesolvers.solverslib.util.Debouncer
+import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
-import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.Angle
-import org.firstinspires.ftc.robotcore.external.Supplier
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
-import org.firstinspires.ftc.teamcode.subsystems.shooter.hood.HoodConstants
-import org.firstinspires.ftc.teamcode.subsystems.shooter.hood.HoodConstants.Interpolation
-import org.firstinspires.ftc.teamcode.subsystems.shooter.hood.HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT
-import org.threeten.bp.OffsetTime
-import java.util.Optional
+import java.util.function.Supplier
 import kotlin.math.abs
 
 class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
@@ -32,6 +27,10 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     private lateinit var rightTurretServo: OpServoEx
 
     private var turretTargetAngle: Angle = Angle(0.0)
+
+    private var configurableTurretAngle: Angle = Angle(0.0)
+
+    private val atTargetDebouncer: Debouncer = Debouncer(0.06, Debouncer.DebounceType.Both)
 
     init {
         // Initialization code
@@ -44,6 +43,17 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
         if (leftTurretServo.hadRTPCoefficientsUpdated(SubsystemControlGains.TURRET_SERVOS_PIDF)) {
             updateTurretPIDF(SubsystemControlGains.TURRET_SERVOS_PIDF)
         }
+
+        if (configurableTurretAngle.degrees.equals(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES).not()) {
+            updateTurretConfigurableAngle(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)
+        }
+    }
+
+    /**
+     * Updates [configurableTurretAngle] with the value of [SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES]
+     */
+    private fun updateTurretConfigurableAngle(newTurretConfigurableAngleDeg: Double) {
+        configurableTurretAngle = Angle.fromDegrees(newTurretConfigurableAngleDeg)
     }
 
     /**
@@ -57,45 +67,58 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * A [Runnable] which sets a new [Angle] after being clamped by the [SubsystemLimits.TURRET_ANGLE_LIMITS] limit.
-     * @param angle the desired [Angle]
-     * @return a [Runnable] which sets a new angle
+     * Sets a new angle with the [SubsystemPresetTargets.TURRET_ZERO_ANGLE] value.
+     * @return a [Runnable] which sets the new turret angle.
      */
-    private fun setTurretAngle(angle: Angle): Runnable {
+    fun setTurretZeroAngle(): Runnable {
         return {
-            val clampedAngle = angle.coerceIn(SubsystemLimits.TURRET_ANGLE_LIMITS)
-            turretTargetAngle = clampedAngle
+            turretTargetAngle = SubsystemPresetTargets.TURRET_ZERO_ANGLE
 
-            leftTurretServo.runToPosition(clampedAngle)
-            rightTurretServo.runToPosition(clampedAngle)
+            rightTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_ZERO_ANGLE,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
+            leftTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_ZERO_ANGLE,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
         }
     }
 
     /**
-     * Calls [setTurretAngle] and sets a new angle with the [SubsystemPresetTargets.TURRET_ZERO_ANGLE] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets the new turret angle.
+     * Sets a new angle with the [SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES] value.
+     * @return a [Runnable] which sets the new turret angle.
      */
-    fun setTurretZeroAngle(): Command {
-        return setTurretAngle(SubsystemPresetTargets.TURRET_ZERO_ANGLE).InstantCommand(this)
+    fun setTurretConfigurableAngle(): Runnable {
+        return {
+            val clampedAngleDeg = MathUtils.clamp(configurableTurretAngle.degrees, SubsystemLimits.TURRET_ANGLE_LIMITS.start.degrees,
+                SubsystemLimits.TURRET_ANGLE_LIMITS.endInclusive.degrees)
+            turretTargetAngle = Angle.fromDegrees(clampedAngleDeg)
+
+            rightTurretServo.setServoPosition(configurableTurretAngle,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
+            leftTurretServo.setServoPosition(configurableTurretAngle,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
+        }
     }
 
     /**
-     * Calls [setTurretAngle] and sets a new angle with the [SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets the new turret angle.
+     * Sets the new [turretCalculatedAngle].
+     * @return a [Runnable] that sets the new calculated angle.
      */
-    fun setTurretConfigurableAngle(): Command {
-        return setTurretAngle(Angle.fromDegrees(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)).InstantCommand(this)
+    private fun setTurretCalculatedAngle(turretCalculatedAngle: Angle): Runnable {
+        return {
+            val clampedAngleDeg = MathUtils.clamp(turretCalculatedAngle.degrees, SubsystemLimits.TURRET_ANGLE_LIMITS.start.degrees,
+                SubsystemLimits.TURRET_ANGLE_LIMITS.endInclusive.degrees)
+            turretTargetAngle = Angle.fromDegrees(clampedAngleDeg)
+
+            rightTurretServo.setServoPosition(turretCalculatedAngle,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
+            leftTurretServo.setServoPosition(turretCalculatedAngle,
+                SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
+        }
     }
 
-    /**
-     * Calculate the desired target angle based on the [chassisRelativeTargetAngle] and the [chassisCurrentRotation].
-     * @return a [RunCommand] that sets the new calculated angle.
-     */
-    fun setCalculatedTurretAngle(chassisRelativeTargetAngle: Supplier<Rotation2d>, chassisCurrentRotation: Supplier<Rotation2d>): Command {
+    fun setTurretCalculatedAngleCommand(chassisRelativeTargetAngle: Supplier<Rotation2d>, chassisCurrentRotation: Supplier<Rotation2d>): Command {
         return RunCommand({
-            val targetAngle = calculateTurretAngle(chassisRelativeTargetAngle.get(), chassisCurrentRotation.get())
-
-            setTurretAngle(targetAngle).run()
+            val turretCalculatedAngle = calculateTurretAngle(chassisRelativeTargetAngle.get(), chassisCurrentRotation.get())
+            setTurretCalculatedAngle(turretCalculatedAngle).run()
         }, this)
     }
 
@@ -123,9 +146,11 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     fun getIsAtTarget(): Boolean {
         if (turretTargetAngle < TurretConstants.Mechanical.TARGET_ANGLE_THRESHOLD) return false
 
-        return abs(
+        val withinTolerance = abs(
             (turretTargetAngle.minus(rightTurretServo.getAngle())).degrees
         ) < SubsystemTolerances.TURRET_ANGLE_TOLERANCE.degrees
+
+        return atTargetDebouncer.calculate(withinTolerance)
     }
 
     // Log useful values

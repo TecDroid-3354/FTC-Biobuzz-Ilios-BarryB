@@ -9,6 +9,7 @@ import com.seattlesolvers.solverslib.hardware.motors.CRServo
 import com.seattlesolvers.solverslib.hardware.motors.CRServoEx
 import com.seattlesolvers.solverslib.hardware.servos.ServoEx
 import com.seattlesolvers.solverslib.util.InterpLUT
+import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Voltage
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
@@ -44,14 +45,16 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
     }
 
     // TODO() Add comment
-    fun setServoPosition(angle: Angle) {
+    fun setServoPosition(angle: Angle, subsystemLimits: ClosedRange<Angle>, reduction: Double) {
         if (controlMode != ServoControlMode.POSITION) {
             return
         }
 
-        val clampedAngle = angle.degrees.coerceIn(0.0, range.degrees)
+        val subsystemClampedLimits = MathUtils.clamp(angle.degrees, subsystemLimits.start.degrees, subsystemLimits.endInclusive.degrees)
+        val servoTransformedAngle = subsystemClampedLimits * reduction
+        val servoClampedRange = servoTransformedAngle.coerceIn(0.0, range.degrees)
 
-        val servoPosition = angleLUT.get(clampedAngle)
+        val servoPosition = angleLUT.get(servoClampedRange)
 
         servo.set(servoPosition)
     }

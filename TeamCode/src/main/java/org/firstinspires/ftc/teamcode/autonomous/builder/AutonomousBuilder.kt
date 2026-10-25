@@ -37,7 +37,7 @@ open class AutonomousBuilder(private val alliance: Alliance): CommandOpMode() {
         robot = Robot(alliance, hardwareMap, controller, telemetry)
         // TODO Initialize the instance of your org.firstinspires.ftc.teamcode.autonomous.paths.examplePaths.Paths class
 
-        // TODO Set starting pose based on the autonomous to follow
+        // TODO Set starting pose based on the autonomous to follow. Replace the empty Pose.
         robot.initAuto(Pose(0.0, 0.0))
 
         // Chain commands inside the autonomous command //
@@ -45,12 +45,6 @@ open class AutonomousBuilder(private val alliance: Alliance): CommandOpMode() {
         autonomousCommand = SequentialCommandGroup(
             // TODO Write here your commands
         )
-
-        // Wait for start to schedule command
-        waitForStart()
-
-        // Schedule autonomous command
-        autonomousCommand.schedule()
     }
 
     // Executed indefinitely after the init button is pressed
@@ -58,9 +52,15 @@ open class AutonomousBuilder(private val alliance: Alliance): CommandOpMode() {
         robot.initLoop()
     }
 
+    override fun preRun() {
+        // Schedule autonomous command
+        autonomousCommand.schedule()
+    }
+
     // Executed after the play button is pressed
     override fun run() {
         robot.run()
+        robot.printTelemetry(robot.pTelemetry)
     }
 
     // Executed when the OpMode ends

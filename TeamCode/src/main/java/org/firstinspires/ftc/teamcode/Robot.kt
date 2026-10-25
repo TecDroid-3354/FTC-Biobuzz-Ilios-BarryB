@@ -9,16 +9,12 @@ import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
-import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
-import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.subsystems.mecanum.Mecanum
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
-import org.firstinspires.ftc.teamcode.utils.extensions.a
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
-import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
-import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
+import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
 
 class Robot(
     private val alliance: Alliance,
@@ -28,7 +24,7 @@ class Robot(
 ): TecDroidRobot(hardwareMap) {
 
     /* Declare your Pedro Pathing's Follower here */
-    private lateinit var follower: Follower
+    lateinit var follower: Follower
     /* Declare your subsystems here */
     private lateinit var drive: Mecanum
 
@@ -44,29 +40,6 @@ class Robot(
         drive = Mecanum(follower, controller, alliance)
     }
 
-    /* Runs indefinitely after the init button on the DS is pressed. Stops when play button is pressed */
-    override fun initLoop() {}
-
-    /* Initialize your teleop controller commands here */
-    override fun initTeleOp() {
-        // Chassis default command
-        drive.setPose(Pose(0.0, 0.0))
-        drive.defaultCommand = drive.driveFollowingDriverInput()
-
-        // Configure Control Bindings
-        configureBindings()
-    }
-
-    /**
-     * Runs once before the main loop of the robot [loopTeleOp]
-     */
-    override fun preTeleOp() {}
-
-    /**
-     * Runs periodically, useful for updating variables or configurables.
-     */
-    override fun loopTeleOp() {}
-
     /**
      * Runs once when init is pressed during auto.
      * Initialize auto commands and set STARTING pose.
@@ -75,11 +48,34 @@ class Robot(
         drive.setPose(startingPose)
     }
 
+    /* Runs indefinitely after the init button on the DS is pressed. Stops when play button is pressed */
+    override fun initLoop() {}
+
+    /**
+     * Runs once before the main loop of the robot [loopTeleOp]
+     */
+    override fun preTeleOp() {}
+
+    /* Initialize your teleop controller commands here */
+    override fun initTeleOp(autoEndPose: Pose) {
+        // Chassis default command
+        drive.setPose(autoEndPose)
+        drive.defaultCommand = drive.driveFieldRelative()
+
+        // Configure Control Bindings
+        configureBindings()
+    }
+
+    /**
+     * Runs periodically, useful for updating variables or configurables.
+     */
+    override fun loopTeleOp() {}
+
     /**
      * Runs once on the end of OpModes.
      */
     override fun onEnd() {
-        PoseStorage.autonomousEndPose = follower.pose()
+        PoseStorage.autonomousEndPose = drive.getPose()
     }
 
     /**
@@ -101,6 +97,6 @@ class Robot(
      */
     override fun configureBindings() {
         controller.circle()
-            .onTrue(drive.followPathToTargetFieldPosition(Pose(70.74999999999999, 109.64705882352942, 0.0), true, 1.0))
+            .whileTrue(drive.followPathToTargetFieldPosition(Pose(70.75, 70.75, 0.0), true, 1.0))
     }
 }

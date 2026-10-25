@@ -28,7 +28,7 @@ abstract class TecDroidRobot(private val hardwareMap: HardwareMap): Robot() {
 
     abstract fun initLoop()
 
-    abstract fun initTeleOp()
+    abstract fun initTeleOp(autoEndPose: Pose)
 
     abstract fun preTeleOp()
 
