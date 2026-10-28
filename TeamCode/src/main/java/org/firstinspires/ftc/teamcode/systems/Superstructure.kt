@@ -18,6 +18,7 @@ import com.skeletonarmy.marrow.zones.PolygonZone
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions
+import org.firstinspires.ftc.teamcode.constants.FieldTargets
 import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
 import org.firstinspires.ftc.teamcode.constants.RobotDimensions
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
@@ -177,12 +178,16 @@ class Superstructure(
         return mecanum.followPathCMD(path, holdEnd, maxPower)
     }
 
-    /**
-     * Drives the [Mecanum] to a target [pose] in the field. Calls [Mecanum.followPathToTargetFieldPosition]
-     * reach its target position.
-     */
-    fun setDriveFieldTargetPosition(pose: Pose): Command {
-        return mecanum.followPathToTargetFieldPosition(pose, true, 1.0)
+    fun driveToNearestFlower(): Command {
+        return mecanum.followPathToTargetFieldPosition(getNearestFlower(), true, 1.0, Optional.empty())
+    }
+
+    fun driveToLeftPark(): Command {
+        return mecanum.followPathToTargetFieldPosition({ getLeftPark() }, true, 1.0, Optional.of(true))
+    }
+
+    fun driveToRightPark(): Command {
+        return mecanum.followPathToTargetFieldPosition({ getRightPark() }, true, 1.0, Optional.of(true))
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
@@ -216,6 +221,34 @@ class Superstructure(
         } else {
             if (isDriveOnLeftSide().asBoolean) ScoringTargets.BLUE_HIVE_LEFT_TOP_TARGET else ScoringTargets.BLUE_HIVE_RIGHT_TOP_TARGET
         }
+    }
+
+    private fun getNearestFlower(): Supplier<Pose> {
+        return {
+            val distanceList: MutableList<Double> = MutableList(4) { 0.0 }
+
+            for ((index, flower) in FieldTargets.FLOWER_LIST.withIndex()) {
+                distanceList[index] = mecanum.getPose().distance(flower)
+            }
+
+            val minDistance = distanceList.withIndex().minByOrNull { it.value }
+
+            when (minDistance?.index) {
+                0 -> FieldTargets.RIGHT_FLOWER_INTAKE_POSITION
+                1 -> FieldTargets.TOP_FLOWER_INTAKE_POSITION
+                2 -> FieldTargets.LEFT_FLOWER_INTAKE_POSITION
+                3 -> FieldTargets.BOTTOM_FLOWER_INTAKE_POSITION
+                else -> mecanum.getPose()
+            }
+        }
+    }
+
+    private fun getLeftPark(): Pose {
+        return if (alliance == Alliance.RED) FieldTargets.RED_PARK_LEFT else FieldTargets.BLUE_PARK_LEFT
+    }
+
+    private fun getRightPark(): Pose {
+        return if (alliance == Alliance.RED) FieldTargets.RED_PARK_RIGHT else FieldTargets.BLUE_PARK_RIGHT
     }
 
     // --------------- -------- -------- --------------- //
@@ -345,6 +378,11 @@ class Superstructure(
     /** Returns whether the [Indexer] has reached its velocity target */
     fun isIndexerAtTarget(): Boolean {
         return indexer.getIsAtTarget()
+    }
+
+    /** Returns whether the indexer is full of pollen */
+    fun getIndexerFull(): Boolean {
+        return indexer.isIndexerFull()
     }
 
     // --------------- ------- -------- --------------- //

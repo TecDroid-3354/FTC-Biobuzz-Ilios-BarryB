@@ -16,22 +16,25 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
+import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorConfig
+import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorV3
+import org.firstinspires.ftc.teamcode.utils.sensors.DetectedColor
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import kotlin.math.abs
 
-@Suppress("JoinDeclarationAndAssignment")
-class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
+class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
 
-    private var indexerMotor: OpMotorEx
+    private lateinit var indexerMotor: OpMotorEx
 
     private var indexerTargetVelocity: AngularVelocity = AngularVelocity(0.0)
 
     private var configurableIndexerVelocity: AngularVelocity = AngularVelocity(0.0)
 
+    private lateinit var topColorSensor: ColorSensorV3; private lateinit var bottomLeftColorSensor: ColorSensorV3; private lateinit var bottomRightColorSensor: ColorSensorV3;
+
     init {
         // Initialization code
-        indexerMotor = OpMotorEx(hardwareMap, IndexerConstants.Identification.INDEXER_MOTOR_ID)
-        indexerMotor.applyConfigurationAndResetEncoder(IndexerConstants.Configuration.indexerConfiguration)
+        configureIndexer()
     }
 
     /** Runs every cycle */
@@ -127,10 +130,47 @@ class Indexer(hardwareMap: HardwareMap): SubsystemBase() {
         ) < SubsystemTolerances.INDEXER_RPM_TOLERANCE.rpm
     }
 
+    /** @return the color detected by the top color sensor */
+    private fun getTopDetectedColor(): DetectedColor {
+        return topColorSensor.getColor()
+    }
+
+    /** @return the color detected by the bottom color sensors */
+    private fun getBottomDetectedColor(): DetectedColor {
+        return if (bottomRightColorSensor.getColor() == bottomLeftColorSensor.getColor()) bottomLeftColorSensor.getColor() else DetectedColor.NO_DETECTION
+    }
+
+    /** @return whether the indexer is full */
+    fun isIndexerFull(): Boolean {
+        var consistencyTracker = 0.0
+
+        return if (getTopDetectedColor() == getBottomDetectedColor()) {
+            consistencyTracker++
+            consistencyTracker >= IndexerConstants.ColorSensor.REQUIRED_DETECTION_CONSISTENCY
+        } else {
+            consistencyTracker = 0.0
+            false
+        }
+    }
+
     // Valuable indexer information, call inside Robot.printTelelmetry()
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Indexer")
         telemetry.addData("Indexer Velocity RPM", indexerMotor.getVelocity().get().rpm)
         telemetry.addData("Indexer Target Velocity RPM", indexerTargetVelocity.rpm)
+
+        telemetry.addLine("Color Sensors")
+        telemetry.addData("Top Color", getTopDetectedColor())
+        telemetry.addData("Bottom Color", getBottomDetectedColor())
+        telemetry.addData("Is Full", isIndexerFull())
+    }
+
+    private fun configureIndexer() {
+        indexerMotor = OpMotorEx(hardwareMap, IndexerConstants.Identification.INDEXER_MOTOR_ID)
+        indexerMotor.applyConfigurationAndResetEncoder(IndexerConstants.Configuration.indexerConfiguration)
+
+        topColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.topSensorConfig)
+        bottomLeftColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.bottomLeftSensorConfig)
+        bottomRightColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.bottomRightSensorConfig)
     }
 }

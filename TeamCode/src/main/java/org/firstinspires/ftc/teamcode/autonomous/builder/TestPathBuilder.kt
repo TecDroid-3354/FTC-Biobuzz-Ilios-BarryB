@@ -45,11 +45,11 @@ open class TestPathBuilder(private val alliance: Alliance): CommandOpMode() {
         autonomousCommand = SequentialCommandGroup(
             robot.followPathCMD(paths.path1(), false, 0.8),
             robot.followPathCMD(paths.path2(), false, 1.0),
-            robot.followPathCMD(paths.path3(), true, 1.0),
-            robot.followPathCMD(paths.path4(), false, 0.8),
-            robot.followPathCMD(paths.path5(), false, 1.0),
-            robot.followPathCMD(paths.path6(), true, 1.0),
-            robot.followPathCMD(paths.path7(), false, 1.0)
+//            robot.followPathCMD(paths.path3(), true, 1.0),
+//            robot.followPathCMD(paths.path4(), false, 0.8),
+//            robot.followPathCMD(paths.path5(), false, 1.0),
+//            robot.followPathCMD(paths.path6(), true, 1.0),
+//            robot.followPathCMD(paths.path7(), false, 1.0)
         )
     }
 

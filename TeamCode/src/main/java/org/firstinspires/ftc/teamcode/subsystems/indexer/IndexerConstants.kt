@@ -5,6 +5,7 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
+import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorConfig
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 
 // TODO Before test validate these values
@@ -12,11 +13,31 @@ object IndexerConstants {
 
     object Identification {
         const val INDEXER_MOTOR_ID = "indexerMotor"
+
+        const val TOP_COLOR_SENSOR_ID = "tcs"
+        const val BOTTOM_LEFT_COLOR_SENSOR_ID = "blcs"
+        const val BOTTOM_RIGHT_COLOR_SENSOR_ID = "brcs"
     }
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
         val TARGET_VELOCITY_THRESHOLD = AngularVelocity.fromRpm(100.0)
+    }
+
+    object ColorSensor {
+        val topSensorConfig = ColorSensorConfig(
+            Identification.TOP_COLOR_SENSOR_ID
+        )
+
+        val bottomLeftSensorConfig = ColorSensorConfig(
+            Identification.BOTTOM_LEFT_COLOR_SENSOR_ID
+        )
+
+        val bottomRightSensorConfig = ColorSensorConfig(
+            Identification.BOTTOM_LEFT_COLOR_SENSOR_ID
+        )
+
+        const val REQUIRED_DETECTION_CONSISTENCY = 50.0
     }
 
     object Configuration{

@@ -9,7 +9,7 @@ object MecanumConstants {
     }
 
     object WeaverConfig {
-        val CLEARANCE = Distance.fromInches(4.0)
-        val MAX_DISTANCE_TO_FOLLOW_PATH = Distance.fromInches(1.0)
+        val OBSTACLE_CLEARANCE = Distance.fromInches(4.0)
+        val MAX_DISTANCE_TO_FOLLOW_PATH = Distance.fromInches(1.5)
     }
 }

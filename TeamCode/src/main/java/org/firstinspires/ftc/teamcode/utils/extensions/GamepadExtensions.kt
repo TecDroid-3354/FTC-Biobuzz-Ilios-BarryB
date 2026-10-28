@@ -3,6 +3,7 @@
 package org.firstinspires.ftc.teamcode.utils.extensions
 
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.button.GamepadButton
 import com.seattlesolvers.solverslib.command.button.Trigger
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
@@ -30,6 +31,8 @@ fun GamepadEx.rightTrigger()    : Trigger           { return Trigger{ this.getTr
 fun GamepadEx.rightTrigger(threshold: Double)       : Trigger { return Trigger{ this.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > threshold } }
 fun GamepadEx.leftTrigger()     : Trigger           { return Trigger{ this.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.1 } }
 fun GamepadEx.leftTrigger(threshold: Double)        : Trigger { return Trigger{ this.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > threshold } }
+
+fun GamepadEx.rumble(blips: Int): Command           { return InstantCommand({ this.gamepad.rumbleBlips(blips) }) }
 
 // Gamepad buttons commands'
 fun GamepadButton.onTrue    (command: Command): GamepadButton  { this.whenPressed              (command); return this   }

@@ -52,14 +52,14 @@ class Robot(
     override fun initLoop() {}
 
     /**
-     * Runs once before the main loop of the robot [loopTeleOp]
+     * Runs once before the main loop of the robot [loop]
      */
     override fun preTeleOp() {}
 
     /* Initialize your teleop controller commands here */
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
-        drive.setPose(autoEndPose)
+        drive.setPose(Pose(9.8, 103.7206, Math.PI / 2))
         drive.defaultCommand = drive.driveFieldRelative()
 
         // Configure Control Bindings
@@ -69,7 +69,7 @@ class Robot(
     /**
      * Runs periodically, useful for updating variables or configurables.
      */
-    override fun loopTeleOp() {}
+    override fun loop() {}
 
     /**
      * Runs once on the end of OpModes.
@@ -96,7 +96,8 @@ class Robot(
      * Write here your controller.button() commands.
      */
     override fun configureBindings() {
-        controller.circle()
-            .whileTrue(drive.followPathToTargetFieldPosition(Pose(70.75, 70.75, 0.0), true, 1.0))
+
+
+        // TODO add park button. Depends on alliance. Add flower button, just one that evaluates the zone and then chooses the closest one.
     }
 }

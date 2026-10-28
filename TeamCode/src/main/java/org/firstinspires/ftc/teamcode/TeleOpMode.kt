@@ -14,7 +14,9 @@ open class TeleOpMode(val alliance: Alliance): CommandOpMode() {
         super.reset()
         controller = GamepadEx(gamepad1)
         robot = Robot(alliance, hardwareMap, controller, telemetry)
-        robot.initTeleOp(PoseStorage.autonomousEndPose ?: Pose(0.0, 0.0, 0.0))
+
+        val startPose = PoseStorage.autonomousEndPose ?: Pose(1.0, 0.0, 0.0)
+        robot.initTeleOp(startPose)
     }
 
     override fun initialize_loop() {
