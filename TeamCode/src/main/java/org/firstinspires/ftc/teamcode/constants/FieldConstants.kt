@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.constants
 
+import com.pedropathing.api.PoseFactory
 import com.pedropathing.math.Pose
 import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.skeletonarmy.marrow.zones.Point
@@ -87,10 +88,11 @@ object Zones {
     val BLUE_GARDEN     = PolygonZone(BLUE_GARDEN_CENTER, GARDEN_WIDTH_X.inches, GARDEN_DEPTH_Y.inches)
     val LEFT_SIDE       = PolygonZone(LEFT_SIDE_CENTER, FIELD_CENTER_PEDRO.inches, Y_AXIS_HEIGHT.inches)
     val RIGHT_SIDE      = PolygonZone(RIGHT_SIDE_CENTER, FIELD_CENTER_PEDRO.inches, Y_AXIS_HEIGHT.inches)
-    val TOP_FLOWER      = PolygonZone(TOP_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
-    val BOTTOM_FLOWER   = PolygonZone(BOTTOM_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
-    val RIGHT_FLOWER    = PolygonZone(RIGHT_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
-    val LEFT_FLOWER     = PolygonZone(LEFT_FLOWER_CENTER, FLOWER_WIDTH.inches, FLOWER_WIDTH.inches)
+    // plus 2 inches is an arbitrary value which ensures the obstacle is cleared with ease.
+    val TOP_FLOWER      = PolygonZone(TOP_FLOWER_CENTER, FLOWER_WIDTH.inches + 2.0, FLOWER_WIDTH.inches + 2.0)
+    val BOTTOM_FLOWER   = PolygonZone(BOTTOM_FLOWER_CENTER, FLOWER_WIDTH.inches + 2.0, FLOWER_WIDTH.inches + 2.0)
+    val RIGHT_FLOWER    = PolygonZone(RIGHT_FLOWER_CENTER, FLOWER_WIDTH.inches + 2.0, FLOWER_WIDTH.inches + 2.0)
+    val LEFT_FLOWER     = PolygonZone(LEFT_FLOWER_CENTER, FLOWER_WIDTH.inches + 2.0, FLOWER_WIDTH.inches + 2.0)
 }
 
 object ScoringTargets {
@@ -111,7 +113,7 @@ object FieldTargets {
     val RIGHT_FLOWER_INTAKE_POSITION    = Pose(124.0, 94.0, 0.0)
     val TOP_FLOWER_INTAKE_POSITION      = Pose(47.0, 124.0, Math.PI / 2)
     val LEFT_FLOWER_INTAKE_POSITION     = Pose(17.0, 47.0, Math.PI)
-    val BOTTOM_FLOWER_INTAKE_POSITION   = Pose(94.0, 19.0, 3 * Math.PI / 2)
+    val BOTTOM_FLOWER_INTAKE_POSITION   = Pose(94.0, 19.0, -Math.PI / 2)
 
     val FLOWER_LIST                     = listOf(RIGHT_FLOWER_INTAKE_POSITION, TOP_FLOWER_INTAKE_POSITION, LEFT_FLOWER_INTAKE_POSITION, BOTTOM_FLOWER_INTAKE_POSITION)
 

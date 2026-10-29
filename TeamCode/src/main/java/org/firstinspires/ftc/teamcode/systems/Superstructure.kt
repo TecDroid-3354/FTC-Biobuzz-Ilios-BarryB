@@ -8,6 +8,7 @@ import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup
+import com.seattlesolvers.solverslib.command.RetryCommand
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.command.WaitUntilCommand
@@ -86,27 +87,27 @@ class Superstructure(
         // Follower Initialization
         follower = Constants.createFollower(hardwareMap)
         //Turret Initialization
-        turret = Turret(hardwareMap)
+        //turret = Turret(hardwareMap)
         // Pose Estimator Intialization
-        poseEstimator = PoseEstimator(
-            LocalizationConstants.mount, LocalizationConstants.tagMap, LocalizationConstants.estimatorConfig
-        )
+//        poseEstimator = PoseEstimator(
+//            LocalizationConstants.mount, LocalizationConstants.tagMap, LocalizationConstants.estimatorConfig
+//        )
         // Mecanum Initialization
-        mecanum = Mecanum(follower, controller, alliance, poseEstimator) { turret.getAngle() }
+        mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getAngle() }
         // Intake deploy Initialization
-        intakeDeploy = IntakeDeploy(hardwareMap)
+        //intakeDeploy = IntakeDeploy(hardwareMap)
         // Intake Rollers Initialization
-        intakeRollers = IntakeRollers(hardwareMap)
+        //intakeRollers = IntakeRollers(hardwareMap)
         // Indexer Initialization
-        indexer = Indexer(hardwareMap)
+        //indexer = Indexer(hardwareMap)
         // Hood Initialization
-        hood = Hood(hardwareMap)
+        //hood = Hood(hardwareMap)
         // Flywheel Initialization
-        flywheel = Flywheel(hardwareMap)
+        //flywheel = Flywheel(hardwareMap)
         // Flywheel hard stop initialization
-        flywheelHardStop = FlywheelHardStop(hardwareMap)
+        //flywheelHardStop = FlywheelHardStop(hardwareMap)
         // Limelight initialization
-        limelight = Limelight(hardwareMap, mecanum)
+        //limelight = Limelight(hardwareMap, mecanum)
     }
 
     override fun periodic() {
@@ -179,15 +180,15 @@ class Superstructure(
     }
 
     fun driveToNearestFlower(): Command {
-        return mecanum.followPathToTargetFieldPosition(getNearestFlower(), true, 1.0, Optional.empty())
+        return mecanum.followPathToTargetFieldPosition(getNearestFlower(), true, 1.0)
     }
 
     fun driveToLeftPark(): Command {
-        return mecanum.followPathToTargetFieldPosition({ getLeftPark() }, true, 1.0, Optional.of(true))
+        return mecanum.followPathToTargetFieldPosition({ getRightPark() }, true, 1.0)
     }
 
     fun driveToRightPark(): Command {
-        return mecanum.followPathToTargetFieldPosition({ getRightPark() }, true, 1.0, Optional.of(true))
+        return mecanum.followPathToTargetFieldPosition({ getLeftPark() }, true, 1.0)
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
@@ -223,16 +224,20 @@ class Superstructure(
         }
     }
 
+    // TODO Choose flower based on distance and velocity direction. Avoid confusing between two flowers at the same distance.
     private fun getNearestFlower(): Supplier<Pose> {
         return {
             val distanceList: MutableList<Double> = MutableList(4) { 0.0 }
 
+            // Put distances to every flower in a mutable list
             for ((index, flower) in FieldTargets.FLOWER_LIST.withIndex()) {
                 distanceList[index] = mecanum.getPose().distance(flower)
             }
 
+            // Calculate min distance's flower index
             val minDistance = distanceList.withIndex().minByOrNull { it.value }
 
+            // Return the pose of the flower closest to the robot
             when (minDistance?.index) {
                 0 -> FieldTargets.RIGHT_FLOWER_INTAKE_POSITION
                 1 -> FieldTargets.TOP_FLOWER_INTAKE_POSITION
@@ -635,5 +640,6 @@ class Superstructure(
         telemetryM.addData("Fused", mecanum.getPose())
         //telemetryM.addData("Stats", poseEstimator.stats)
         telemetryM.addData("Target", scoringTarget)
+        telemetryM.addData("Nearest Flower", getNearestFlower().get())
     }
 }

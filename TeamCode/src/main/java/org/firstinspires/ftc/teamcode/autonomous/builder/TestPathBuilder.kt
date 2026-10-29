@@ -59,7 +59,7 @@ open class TestPathBuilder(private val alliance: Alliance): CommandOpMode() {
     }
 
     override fun preRun() {
-        autonomousCommand.schedule()
+        robot.preAuto(autonomousCommand)
     }
 
     // Executed after the play button is pressed

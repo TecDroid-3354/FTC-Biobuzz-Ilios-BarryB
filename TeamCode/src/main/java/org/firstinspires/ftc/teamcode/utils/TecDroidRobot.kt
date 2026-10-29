@@ -21,7 +21,9 @@ abstract class TecDroidRobot(private val hardwareMap: HardwareMap): Robot() {
         OpServoEx.clearRegistry()
     }
 
-    protected abstract fun subsystemInitialization()
+    abstract fun preAuto(command: Command)
+
+    abstract fun initAuto(startingPose: Pose)
 
     abstract fun initLoop()
 
@@ -30,8 +32,6 @@ abstract class TecDroidRobot(private val hardwareMap: HardwareMap): Robot() {
     abstract fun preTeleOp()
 
     abstract fun loop()
-
-    abstract fun initAuto(startingPose: Pose)
 
     abstract fun onEnd()
 

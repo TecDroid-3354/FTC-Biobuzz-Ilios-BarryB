@@ -10,34 +10,34 @@ import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.subsystems.mecanum.Mecanum
+import org.firstinspires.ftc.teamcode.systems.Superstructure
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadLeft
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadRight
+import org.firstinspires.ftc.teamcode.utils.extensions.leftBumper
+import org.firstinspires.ftc.teamcode.utils.extensions.leftTrigger
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
 
+@Suppress("JoinDeclarationAndAssignment")
 class Robot(
-    private val alliance: Alliance,
-    private val hardwareMap: HardwareMap,
+    alliance: Alliance,
+    hardwareMap: HardwareMap,
     private val controller: GamepadEx,
     private val telemetry: Telemetry
 ): TecDroidRobot(hardwareMap) {
 
-    /* Declare your Pedro Pathing's Follower here */
-    lateinit var follower: Follower
-    /* Declare your subsystems here */
-    private lateinit var drive: Mecanum
+    /* Superstructure Declaration */
+    private var superstructure: Superstructure
 
     init {
-        subsystemInitialization()
+        superstructure = Superstructure(hardwareMap, controller, alliance, pTelemetry)
     }
 
-    /* Initialize your subsystems and follower here */
-    override fun subsystemInitialization() {
-        // Follower initialization
-        follower = Constants.createFollower(hardwareMap)
-        // Subsystem initialization
-        drive = Mecanum(follower, controller, alliance)
+    override fun preAuto(command: Command) {
+        superstructure.preAuto(command)
     }
 
     /**
@@ -45,7 +45,7 @@ class Robot(
      * Initialize auto commands and set STARTING pose.
      */
     override fun initAuto(startingPose: Pose) {
-        drive.setPose(startingPose)
+        superstructure.setPose(startingPose)
     }
 
     /* Runs indefinitely after the init button on the DS is pressed. Stops when play button is pressed */
@@ -54,13 +54,17 @@ class Robot(
     /**
      * Runs once before the main loop of the robot [loop]
      */
-    override fun preTeleOp() {}
+    override fun preTeleOp() {
+        // TODO Uncomment when limelight is connected
+        //superstructure.preTeleop().run()
+    }
 
     /* Initialize your teleop controller commands here */
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
-        drive.setPose(Pose(9.8, 103.7206, Math.PI / 2))
-        drive.defaultCommand = drive.driveFieldRelative()
+        // TODO Check why PoseStorage doesn't work
+        superstructure.setPose(Pose(9.8, 103.7206, Math.PI / 2))
+        superstructure.setDriveDefaultCommand()
 
         // Configure Control Bindings
         configureBindings()
@@ -75,7 +79,7 @@ class Robot(
      * Runs once on the end of OpModes.
      */
     override fun onEnd() {
-        PoseStorage.autonomousEndPose = drive.getPose()
+        superstructure.onEnd().run()
     }
 
     /**
@@ -83,21 +87,26 @@ class Robot(
      */
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
+        superstructure.logOdometry()
         telemetryManager.update(telemetry)
-        telemetryManager.addData("Odometry", drive.getPose())
     }
 
     /* Common method to follow any path */
     override fun followPathCMD(path: Path, holdEnd: Boolean, maxPower: Double): Command {
-        return drive.followPathCMD(path, holdEnd, maxPower)
+        return superstructure.followPathCommand(path, holdEnd, maxPower)
     }
 
     /**
      * Write here your controller.button() commands.
      */
     override fun configureBindings() {
+        controller.leftBumper()
+            .whileTrue(superstructure.driveToNearestFlower())
 
+        controller.dpadRight()
+            .whileTrue(superstructure.driveToRightPark())
 
-        // TODO add park button. Depends on alliance. Add flower button, just one that evaluates the zone and then chooses the closest one.
+        controller.dpadLeft()
+            .whileTrue(superstructure.driveToLeftPark())
     }
 }
