@@ -8,11 +8,11 @@ class ServoPositionModeConfiguration: ServoControlModeConfiguration {
     override val controlMode: ServoControlMode
         get() = ServoControlMode.POSITION
 
-    var range                   : Angle                 = Angle(0.0)
+    var range                   : ClosedRange<Angle>                 = Angle(0.0)..Angle(1.0)
 
     var inverted                : Boolean               = false
 
-    fun withRange(value: Angle)   : ServoPositionModeConfiguration {
+    fun withRange(value: ClosedRange<Angle>)   : ServoPositionModeConfiguration {
         this.range = value
         return this
     }

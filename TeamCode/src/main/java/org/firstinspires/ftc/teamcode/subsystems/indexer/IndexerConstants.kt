@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystems.indexer
 import com.seattlesolvers.solverslib.hardware.motors.Motor
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
+import org.firstinspires.ftc.teamcode.utils.controllers.invertSigns
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorConfig
@@ -20,7 +21,7 @@ object IndexerConstants {
     }
 
     object Mechanical {
-        const val GEAR_RATIO = 1.0
+        const val GEAR_RATIO = (54.0 / 18.0) * (65.0 / 42.0)
         val TARGET_VELOCITY_THRESHOLD = AngularVelocity.fromRpm(100.0)
     }
 
@@ -41,7 +42,7 @@ object IndexerConstants {
     }
 
     object Configuration{
-        private const val INVERTED = false
+        private const val INVERTED = true
         private val zeroPowerBehavior = Motor.ZeroPowerBehavior.FLOAT
         private val motorGenericConfiguration = GenericMotorConfiguration()
             .withGearRatio(Mechanical.GEAR_RATIO)

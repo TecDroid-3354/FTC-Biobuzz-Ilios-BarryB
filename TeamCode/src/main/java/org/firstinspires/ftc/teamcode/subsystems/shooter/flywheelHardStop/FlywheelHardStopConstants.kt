@@ -22,6 +22,6 @@ object FlywheelHardStopConstants {
 
         val servoConfiguration = ServoPositionModeConfiguration()
             .withInverted(INVERTED)
-            .withRange(Mechanical.servoRange.endInclusive)
+            .withRange(Mechanical.servoRange)
     }
 }

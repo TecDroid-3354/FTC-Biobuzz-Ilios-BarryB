@@ -17,7 +17,7 @@ object IntakeRollersConstants {
     }
     
     object Mechanical {
-        const val GEAR_RATIO = 1.0
+        const val GEAR_RATIO = (80.0 / 34.0)
         val TARGET_VELOCITY_THRESHOLD = AngularVelocity.fromRpm(100.0)
     }
     

@@ -5,6 +5,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeDe
 import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDFCoefficients
+import com.seattlesolvers.solverslib.controller.PIDFController
 import com.seattlesolvers.solverslib.hardware.motors.CRServo
 import com.seattlesolvers.solverslib.hardware.motors.CRServoEx
 import com.seattlesolvers.solverslib.hardware.servos.ServoEx
@@ -52,7 +53,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
 
         val subsystemClampedLimits = MathUtils.clamp(angle.degrees, subsystemLimits.start.degrees, subsystemLimits.endInclusive.degrees)
         val servoTransformedAngle = subsystemClampedLimits * reduction
-        val servoClampedRange = servoTransformedAngle.coerceIn(0.0, range.degrees)
+        val servoClampedRange = servoTransformedAngle.coerceIn(range.degrees.unaryMinus(), range.degrees)
 
         val servoPosition = angleLUT.get(servoClampedRange)
 
@@ -121,7 +122,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
             return PIDFCoefficients()
         }
 
-        return rtpServo.getPIDFCoefficients()
+        return PIDFCoefficients()
     }
 
     fun hadRTPCoefficientsUpdated(pidfCoefficients: PIDFCoefficients): Boolean {
@@ -143,7 +144,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
     // TODO() Add comment
     private fun updateServo() {
         if (controlMode == ServoControlMode.RUN_TO_POSITION) {
-            rtpServo.periodic()
+            //rtpServo.periodic()
         }
     }
 
@@ -158,9 +159,9 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
             is ServoPositionModeConfiguration -> {
                 servo = ServoEx(hardwareMap, servoId)
                 servo.inverted = config.inverted
-                range = config.range
-                angleLUT.add(0.0, 0.0)
-                angleLUT.add(config.range.degrees, 1.0)
+                range = Angle.fromDegrees(config.range.endInclusive.degrees)
+                angleLUT.add(config.range.start.degrees, 0.0)
+                angleLUT.add(config.range.endInclusive.degrees, 1.0)
                 angleLUT.createLUT()
                 servo.set(0.0)
             }
@@ -216,7 +217,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
     }
 }
 
-private data class RTPServoConfig(
+data class RTPServoConfig(
     val servoId: String,
     val absoluteId: String = "",
     val absoluteMaxVoltage: Voltage,
@@ -228,7 +229,7 @@ private data class RTPServoConfig(
 )
 
 @Suppress("JoinDeclarationAndAssignment")
-private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
+class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
 
     /**
      *[Direction] used for setting a servo direction
@@ -238,7 +239,7 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
     }
 
     // Creating the servo
-    private var servo: CRServo
+    private var servo: CRServoEx
 
     // Creating the absolute encoder
     private var servoEncoder: AnalogInput
@@ -253,24 +254,23 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
     private var fullRotations = 0
 
     // The turret controller
-    private val pidfController = OpPIDFController(config.pidfCoefficients)
+    private val pidfController = PIDFController(config.pidfCoefficients)
 
     init {
         /* INITIALIZATION CODE */
 
         // Initialize both the CR servo and absolute encoder
-        servo = hw.get(CRServo::class.java, config.servoId)
+        servo = CRServoEx(hw, config.servoId)
         this.servoEncoder = hw.get(AnalogInput::class.java, config.absoluteId)
 
         // Getting the previous angle reading
         previousAngle = getServoAbsoluteAngle()
 
         // Setting a default position tolerance
-        pidfController.enableContinuousInput(-180.0, 180.0)
         pidfController.setTolerance(1.0)
 
         // Must call servo.setPower() for correct servo working
-        setPower(0.0)
+        setPower(0.001)
     }
 
     /**
@@ -295,17 +295,7 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
      * @param target the desired target angle
      */
     fun setTargetAngle(target: Angle) {
-        targetRotation = target / config.gearRatio
-    }
-
-    /**
-     * Changes the [targetRotation] considering gear ratios and the requested [change]
-     * For example, if a negative 360 deg rotation is needed, the [changeTargetAngle] method does the job for getting
-     * the target in terms of the servo.
-     * @param change the desired change in the target rotation
-     */
-    fun changeTargetAngle(change: Angle) {
-        targetRotation += (change / config.gearRatio)
+        targetRotation = target * config.gearRatio
     }
 
     /**
@@ -320,15 +310,15 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
      * Manually sets a new [PIDFCoefficients] to the servo's controller
      */
     fun setPIDF(pidfCoefficients: PIDFCoefficients) {
-        pidfController.setPIDF(pidfCoefficients)
+        pidfController.setPIDF(pidfCoefficients.p, pidfCoefficients.i, pidfCoefficients.d, pidfCoefficients.f)
     }
 
     fun hadPIDFCoefficientsUpdated(pidfCoefficients: PIDFCoefficients): Boolean {
-        return (pidfController.getCoefficients() == pidfCoefficients).not()
+        return (pidfController.coefficients.equals(pidfCoefficients)).not()
     }
 
-    fun getPIDF(): PIDFCoefficients {
-        return pidfController.getCoefficients()
+    fun getPIDF(): DoubleArray {
+        return pidfController.coefficients
     }
 
     /**
@@ -350,20 +340,16 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
      * @return the total rotation the servo has achieved while considering gear ratios.
      */
     fun getAngle(): Angle {
-        val transformedAngle = totalRotation.degrees * config.gearRatio
+        val transformedAngle = totalRotation.degrees / config.gearRatio
         val normalizedAngle = normalizeDegrees(transformedAngle)
         return Angle.fromDegrees(normalizedAngle)
-    }
-
-    fun getPIDFCoefficients(): PIDFCoefficients {
-        return pidfController.getCoefficients()
     }
 
     /**
      * @return true is PID is at set point, false if not
      */
     fun isAtSetPoint(): Boolean {
-        return pidfController.atSetpoint()
+        return pidfController.atSetPoint()
     }
 
     /**
@@ -374,6 +360,7 @@ private class RTPServo(hw: HardwareMap, val config: RTPServoConfig) {
         telemetry.addData("Current Servo Absolute Angle", getServoAbsoluteAngle().degrees)
         // Total of rotations the servo has achieved
         telemetry.addData("Complete rotations", fullRotations)
+        telemetry.addData("Target rotations", targetRotation.degrees)
         // Encoder's voltage (useful when debugging)
         telemetry.addData("Absolute Encoder Voltage", servoEncoder.voltage)
         // If the servo is at set point

@@ -27,6 +27,8 @@ class FlywheelHardStop(hardwareMap: HardwareMap): SubsystemBase() {
         // Initialization code
         flywheelHardStopServo = OpServoEx(hardwareMap, FlywheelHardStopConstants.Identification.FLYWHEEL_HARD_STOP_SERVO_ID)
         flywheelHardStopServo.applyConfiguration(FlywheelHardStopConstants.Configuration.servoConfiguration)
+
+        setFlywheelHardStopBlockingAngle().run()
     }
 
     override fun periodic() {

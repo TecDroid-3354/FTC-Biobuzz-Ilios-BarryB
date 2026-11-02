@@ -12,31 +12,30 @@ import org.firstinspires.ftc.teamcode.utils.units.Voltage
 object IntakeDeployConstants {
 
     object Identification{
-        const val INTAKE_DEPLOY_LEAD_SERVO_ID = "deployLeadServo"
+        const val INTAKE_DEPLOY_LEAD_SERVO_ID = "l"
         const val INTAKE_DEPLOY_LEAD_SERVO_ABSOLUTE_ID = "deployLeadAbs"
 
-        const val INTAKE_DEPLOY_FOLLOWER_SERVO_ID = "deployFollowerServo"
+        const val INTAKE_DEPLOY_FOLLOWER_SERVO_ID = "f"
         const val INTAKE_DEPLOY_FOLLOWER_SERVO_ABSOLUTE_ID = "deployFollowerAbs"
     }
 
     object Mechanical {
-        const val GEAR_RATIO = 1.0
+        const val GEAR_RATIO = (40.0 / 16.0)
         val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(20.0)
 
-        val leadAbsoluteEncoderOffset = Angle(0.0)
-        val followerAbsoluteEncoderOffset = Angle(0.0)
+        val leadAbsoluteEncoderOffset = Angle.fromDegrees(-2.094 * GEAR_RATIO)
+        val followerAbsoluteEncoderOffset = Angle.fromDegrees(11.65 * GEAR_RATIO)
     }
 
     object Configuration{
         private const val LEAD_SERVO_INVERTED = false
-        private const val FOLLOWER_SERVO_INVERTED = false
+        private const val FOLLOWER_SERVO_INVERTED = true
 
         private const val INTAKE_DEPLOY_SERVOS_MAX_POWER = 0.99
 
+        val leadAbsoluteMaxVoltage = Voltage(3.3)
 
-        private val leadAbsoluteMaxVoltage = Voltage(3.3)
-
-        private val followerAbsoluteMaxVoltage = Voltage(3.3)
+         val followerAbsoluteMaxVoltage = Voltage(3.3)
 
         val leadServoConfiguration = ServoRunToPositionModeConfiguration()
             .withMaxPower(INTAKE_DEPLOY_SERVOS_MAX_POWER)

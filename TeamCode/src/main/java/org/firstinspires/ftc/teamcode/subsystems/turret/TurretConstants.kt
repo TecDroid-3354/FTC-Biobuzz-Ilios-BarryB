@@ -21,7 +21,7 @@ object TurretConstants {
         const val GEAR_RATIO = 1.0
         val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(1.0)
 
-        val turretServosRange = Angle.fromDegrees(0.0)..Angle.fromDegrees(360.0)
+        val turretServosRange = Angle.fromDegrees(-180.0)..Angle.fromDegrees(180.0)
     }
 
     object Configuration {
@@ -31,7 +31,7 @@ object TurretConstants {
 
         val leftTurretServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(LEFT_INVERTED)
-            .withRange(Mechanical.turretServosRange.endInclusive)
+            .withRange(Mechanical.turretServosRange)
 
         val rightTurretServoConfiguration = leftTurretServoConfiguration
             .withInverted(RIGHT_INVERTED)

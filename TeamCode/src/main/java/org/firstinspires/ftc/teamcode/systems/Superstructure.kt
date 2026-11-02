@@ -87,7 +87,7 @@ class Superstructure(
         // Follower Initialization
         follower = Constants.createFollower(hardwareMap)
         //Turret Initialization
-        //turret = Turret(hardwareMap)
+        turret = Turret(hardwareMap)
         // Pose Estimator Intialization
 //        poseEstimator = PoseEstimator(
 //            LocalizationConstants.mount, LocalizationConstants.tagMap, LocalizationConstants.estimatorConfig
@@ -95,17 +95,17 @@ class Superstructure(
         // Mecanum Initialization
         mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getAngle() }
         // Intake deploy Initialization
-        //intakeDeploy = IntakeDeploy(hardwareMap)
+        intakeDeploy = IntakeDeploy(hardwareMap, telemetryM)
         // Intake Rollers Initialization
-        //intakeRollers = IntakeRollers(hardwareMap)
+        intakeRollers = IntakeRollers(hardwareMap)
         // Indexer Initialization
-        //indexer = Indexer(hardwareMap)
+        indexer = Indexer(hardwareMap)
         // Hood Initialization
         //hood = Hood(hardwareMap)
         // Flywheel Initialization
         //flywheel = Flywheel(hardwareMap)
         // Flywheel hard stop initialization
-        //flywheelHardStop = FlywheelHardStop(hardwareMap)
+        flywheelHardStop = FlywheelHardStop(hardwareMap)
         // Limelight initialization
         //limelight = Limelight(hardwareMap, mecanum)
     }

@@ -13,6 +13,7 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import org.firstinspires.ftc.teamcode.utils.controllers.invertSigns
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
@@ -61,6 +62,9 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
             .withFeedforwardCoefficients(feedforward)
 
         leadIntakeRollersMotor.applyModeConfiguration(newConfig)
+        followerIntakeRollersMotor.applyModeConfiguration(newConfig
+            .withVelocityCoefficients(pidCoefficients.invertSigns())
+            .withFeedforwardCoefficients(feedforward.invertSigns()))
     }
 
     /**
@@ -111,6 +115,8 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
         return InstantCommand({
             intakeRollersTargetVelocity = AngularVelocity(0.0)
             leadIntakeRollersMotor.stopMotor()
+            leadIntakeRollersMotor.stopMotor()
+            followerIntakeRollersMotor.stopMotor()
             followerIntakeRollersMotor.stopMotor()
         }, this)
     }
@@ -128,14 +134,14 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Intake Rollers")
         telemetry.addData("Intake Rollers Velocity RPM", leadIntakeRollersMotor.getVelocity().get().rpm)
-        telemetry.addData("Intake Rollers Target Velocity RPM", leadIntakeRollersMotor.getVelocity().get().rpm)
+        telemetry.addData("Intake Rollers Target Velocity RPM", intakeRollersTargetVelocity.rpm)
     }
 
     private fun configureMotors() {
         leadIntakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.LEAD_INTAKE_ROLLERS_MOTOR_ID)
         leadIntakeRollersMotor.applyConfigurationAndResetEncoder(IntakeRollersConstants.Configuration.leadMotorConfiguration)
 
-        followerIntakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.LEAD_INTAKE_ROLLERS_MOTOR_ID)
+        followerIntakeRollersMotor = OpMotorEx(hardwareMap, IntakeRollersConstants.Identification.FOLLOWER_INTAKE_ROLLERS_MOTOR_ID)
         followerIntakeRollersMotor.applyConfigurationAndResetEncoder(IntakeRollersConstants.Configuration.followerMotorConfiguration)
     }
 }

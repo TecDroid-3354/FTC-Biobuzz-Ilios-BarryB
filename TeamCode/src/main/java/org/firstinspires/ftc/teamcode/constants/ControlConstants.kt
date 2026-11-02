@@ -37,7 +37,7 @@ object SubsystemLimits {
     val HOOD_ANGLE_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
     val TURRET_ANGLE_LIMITS = Angle.fromDegrees(-180.0)..Angle.fromDegrees(180.0)
     val INDEXER_MAX_VELOCITY = AngularVelocity(0.0)..AngularVelocity(6000.0 / IndexerConstants.Mechanical.GEAR_RATIO)
-    val FLYWHEEL_HARD_STOP_LIMITS = Angle(0.0)..Angle.fromDegrees(90.0)
+    val FLYWHEEL_HARD_STOP_LIMITS = Angle(0.0)..Angle.fromDegrees(180.0)
 }
 
 // TODO Get actual target values
@@ -65,8 +65,8 @@ object SubsystemPresetTargets {
     val INDEXER_PRESET_IDLE_RPM = AngularVelocity.fromRpm(2000.0)
 
     // Flywheel Hard Stop Preset Angle Targets //
-    val FLYWHEEL_HARD_STOP_CLEARING_ANGLE = Angle(0.0)
-    val FLYWHEEL_HARD_STOP_BLOCKING_ANGLE = Angle(90.0)
+    val FLYWHEEL_HARD_STOP_CLEARING_ANGLE = Angle.fromDegrees(180.0)
+    val FLYWHEEL_HARD_STOP_BLOCKING_ANGLE = Angle.fromDegrees(135.0)
 }
 
 @Configurable
@@ -123,13 +123,9 @@ object SubsystemControlGains {
     @JvmField
     var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 1.5, 0.0)
 
-    // Turret PID and Feedforward Configurables //
-    @JvmField
-    var TURRET_SERVOS_PIDF = PIDFCoefficients(0.00575, 0.0, 0.0, 0.0)
-
     // Indexer PID and Feedforward Configurables //
     @JvmField
-    var INDEXER_MOTOR_PID = PIDCoefficients(0.1, 0.0, 0.0)
+    var INDEXER_MOTOR_PID = PIDCoefficients(-0.1, 0.0, 0.0)
     @JvmField
-    var INDEXER_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 1.0, 0.0)
+    var INDEXER_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, -1.015, 0.0)
 }

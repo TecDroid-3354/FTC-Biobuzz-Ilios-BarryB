@@ -14,28 +14,35 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
+import org.firstinspires.ftc.teamcode.utils.devices.RTPServo
+import org.firstinspires.ftc.teamcode.utils.devices.RTPServoConfig
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import kotlin.math.abs
 
-class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
+class IntakeDeploy(private val hardwareMap: HardwareMap, private val telemetry: TelemetryManager): SubsystemBase() {
 
-    private lateinit var leadIntakeDeployServo: OpServoEx
+    private lateinit var leadIntakeDeployServo: RTPServo
 
-    private lateinit var followerIntakeDeployServo: OpServoEx
+    private lateinit var followerIntakeDeployServo: RTPServo
 
-    private var intakeDeployTargetAngle: Angle = Angle(0.0)
+    private var intakeDeployTargetAngle: Angle = Angle.fromDegrees(0.0)
 
     private var configurableIntakeDeployAngle: Angle = Angle(0.0)
 
     init {
         // Initialization code
         configureServos()
+
+        setIntakeDeployFloorAngle().run()
     }
 
     /** Runs every cycle */
     override fun periodic() {
-        if (leadIntakeDeployServo.hadRTPCoefficientsUpdated(SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF)) {
+        leadIntakeDeployServo.periodic()
+        followerIntakeDeployServo.periodic()
+
+        if (leadIntakeDeployServo.hadPIDFCoefficientsUpdated(SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF)) {
             updateIntakeDeployPIDF(SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF)
         }
 
@@ -55,8 +62,8 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
      * @param pidfCoefficients the new [PIDCoefficients]
      */
     private fun updateIntakeDeployPIDF(pidfCoefficients: PIDFCoefficients) {
-        leadIntakeDeployServo.updateRunToPositionPIDF(pidfCoefficients)
-        followerIntakeDeployServo.updateRunToPositionPIDF(pidfCoefficients)
+        leadIntakeDeployServo.setPIDF(pidfCoefficients)
+        followerIntakeDeployServo.setPIDF(pidfCoefficients)
     }
 
     /**
@@ -67,8 +74,8 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
         return {
             intakeDeployTargetAngle = SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE
 
-            leadIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
-            followerIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
+            leadIntakeDeployServo.setTargetAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
+            followerIntakeDeployServo.setTargetAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOOR_ANGLE)
         }
     }
 
@@ -80,8 +87,8 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
         return {
             intakeDeployTargetAngle = SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE
 
-            leadIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
-            followerIntakeDeployServo.runToPosition(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
+            leadIntakeDeployServo.setTargetAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
+            followerIntakeDeployServo.setTargetAngle(SubsystemPresetTargets.INTAKE_DEPLOY_FLOWER_ANGLE)
         }
     }
 
@@ -95,8 +102,8 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
                 SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS.start.degrees, SubsystemLimits.INTAKE_DEPLOY_ANGLE_LIMITS.endInclusive.degrees)
             intakeDeployTargetAngle = Angle.fromDegrees(clampedAngleDegrees)
 
-            leadIntakeDeployServo.runToPosition(intakeDeployTargetAngle)
-            followerIntakeDeployServo.runToPosition(intakeDeployTargetAngle)
+            leadIntakeDeployServo.setTargetAngle(intakeDeployTargetAngle)
+            followerIntakeDeployServo.setTargetAngle(intakeDeployTargetAngle)
         }
     }
 
@@ -121,10 +128,28 @@ class IntakeDeploy(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     // Initialize both servos
     private fun configureServos() {
-        leadIntakeDeployServo = OpServoEx(hardwareMap, IntakeDeployConstants.Identification.INTAKE_DEPLOY_LEAD_SERVO_ID)
-        leadIntakeDeployServo.applyConfiguration(IntakeDeployConstants.Configuration.leadServoConfiguration)
+        followerIntakeDeployServo = RTPServo(hardwareMap,
+            RTPServoConfig(
+                IntakeDeployConstants.Identification.INTAKE_DEPLOY_FOLLOWER_SERVO_ID,
+                IntakeDeployConstants.Identification.INTAKE_DEPLOY_FOLLOWER_SERVO_ABSOLUTE_ID,
+                IntakeDeployConstants.Configuration.followerAbsoluteMaxVoltage,
+                RTPServo.Direction.FORWARD,
+                IntakeDeployConstants.Mechanical.followerAbsoluteEncoderOffset,
+                1.0,
+                IntakeDeployConstants.Mechanical.GEAR_RATIO,
+                SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF
+            ))
 
-        followerIntakeDeployServo = OpServoEx(hardwareMap, IntakeDeployConstants.Identification.INTAKE_DEPLOY_FOLLOWER_SERVO_ID)
-        followerIntakeDeployServo.applyConfiguration(IntakeDeployConstants.Configuration.followerServoConfiguration)
+        leadIntakeDeployServo = RTPServo(hardwareMap,
+            RTPServoConfig(
+                IntakeDeployConstants.Identification.INTAKE_DEPLOY_LEAD_SERVO_ID,
+                IntakeDeployConstants.Identification.INTAKE_DEPLOY_LEAD_SERVO_ABSOLUTE_ID,
+                IntakeDeployConstants.Configuration.leadAbsoluteMaxVoltage,
+                RTPServo.Direction.REVERSE,
+                IntakeDeployConstants.Mechanical.leadAbsoluteEncoderOffset,
+                1.0,
+                IntakeDeployConstants.Mechanical.GEAR_RATIO,
+                SubsystemControlGains.INTAKE_DEPLOY_SERVOS_PIDF
+            ))
     }
 }

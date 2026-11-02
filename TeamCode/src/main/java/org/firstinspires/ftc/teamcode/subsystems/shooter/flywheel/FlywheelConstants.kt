@@ -18,7 +18,7 @@ object FlywheelConstants {
     }
 
     object Mechanical {
-        const val GEAR_RATIO = 1.0
+        const val GEAR_RATIO = (50.0 / 30.0)
         val VELOCITY_TARGET_THRESHOLD = AngularVelocity.fromRpm(500.0)
     }
 

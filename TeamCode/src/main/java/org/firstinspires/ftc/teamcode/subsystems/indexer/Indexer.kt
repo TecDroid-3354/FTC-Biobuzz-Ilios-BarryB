@@ -116,6 +116,7 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
         return InstantCommand({
             indexerTargetVelocity = AngularVelocity(0.0)
             indexerMotor.stopMotor()
+            indexerMotor.stopMotor()
         }, this)
     }
 

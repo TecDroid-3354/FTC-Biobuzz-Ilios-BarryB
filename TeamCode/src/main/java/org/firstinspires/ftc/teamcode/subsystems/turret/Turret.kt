@@ -35,15 +35,12 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     init {
         // Initialization code
         configureServos()
+
+        setTurretZeroAngle().run()
     }
 
     /** Runs every cycle */
     override fun periodic() {
-        // Both servos have the same PIDF, just check if one had its coefficients updated.
-        if (leftTurretServo.hadRTPCoefficientsUpdated(SubsystemControlGains.TURRET_SERVOS_PIDF)) {
-            updateTurretPIDF(SubsystemControlGains.TURRET_SERVOS_PIDF)
-        }
-
         if (configurableTurretAngle.degrees.equals(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES).not()) {
             updateTurretConfigurableAngle(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)
         }
@@ -54,16 +51,6 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
      */
     private fun updateTurretConfigurableAngle(newTurretConfigurableAngleDeg: Double) {
         configurableTurretAngle = Angle.fromDegrees(newTurretConfigurableAngleDeg)
-    }
-
-    /**
-     * Updates the [rightTurretServo] and [leftTurretServo]'s [com.qualcomm.robotcore.hardware.PIDFCoefficients]
-     * by calling [OpServoEx.updateRunToPositionPIDF]
-     * @param pidfCoefficients the new [PIDCoefficients]
-     */
-    private fun updateTurretPIDF(pidfCoefficients: PIDFCoefficients) {
-        leftTurretServo.updateRunToPositionPIDF(pidfCoefficients)
-        rightTurretServo.updateRunToPositionPIDF(pidfCoefficients)
     }
 
     /**
@@ -130,14 +117,6 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
         val turretTargetAngle = chassisRelativeTargetAngle.minus(chassisCurrentRotation)
 
         return Angle.fromDegrees(turretTargetAngle.degrees)
-    }
-
-    /**
-     * The turret's MEASURED angle (absolute encoder), 0 = facing the robot's forward, counter-clockwise positive.
-     * Localization needs the real angle, not the target, because the camera is physically wherever the turret is.
-     */
-    fun getAngle(): Angle {
-        return rightTurretServo.getAngle()
     }
 
     /**

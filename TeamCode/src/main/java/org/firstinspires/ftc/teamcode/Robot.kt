@@ -15,11 +15,18 @@ import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
+import org.firstinspires.ftc.teamcode.utils.extensions.cross
 import org.firstinspires.ftc.teamcode.utils.extensions.dpadLeft
 import org.firstinspires.ftc.teamcode.utils.extensions.dpadRight
 import org.firstinspires.ftc.teamcode.utils.extensions.leftBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.leftTrigger
+import org.firstinspires.ftc.teamcode.utils.extensions.onFalse
+import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
+import org.firstinspires.ftc.teamcode.utils.extensions.rightBumper
+import org.firstinspires.ftc.teamcode.utils.extensions.square
+import org.firstinspires.ftc.teamcode.utils.extensions.triangle
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
+import org.firstinspires.ftc.teamcode.utils.extensions.x
 
 @Suppress("JoinDeclarationAndAssignment")
 class Robot(
@@ -64,7 +71,7 @@ class Robot(
         // Chassis default command
         // TODO Check why PoseStorage doesn't work
         superstructure.setPose(Pose(9.8, 103.7206, Math.PI / 2))
-        superstructure.setDriveDefaultCommand()
+        //superstructure.setDriveDefaultCommand()
 
         // Configure Control Bindings
         configureBindings()
@@ -87,7 +94,7 @@ class Robot(
      */
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
-        superstructure.logOdometry()
+        superstructure.logIntakeDeploy()
         telemetryManager.update(telemetry)
     }
 
@@ -108,5 +115,22 @@ class Robot(
 
         controller.dpadLeft()
             .whileTrue(superstructure.driveToLeftPark())
+
+        controller.circle()
+            .onTrue(superstructure.setTurretConfigurableAngle())
+
+        controller.triangle()
+            .onTrue(superstructure.setFlywheelHardStopConfigurableControl())
+
+        controller.square()
+            .onTrue(superstructure.setIndexerConfigurableControl())
+            .onFalse(superstructure.stopIndexer())
+
+        controller.cross()
+            .onTrue(superstructure.setIntakeRollersConfigurableControl())
+            .onFalse(superstructure.stopIntakeRollers())
+
+        controller.rightBumper()
+            .onTrue(superstructure.setIntakeDeployConfigurableControl())
     }
 }

@@ -13,7 +13,7 @@ object HoodConstants {
     }
 
     object Mechanical {
-        const val GEAR_RATIO = 1.0
+        const val GEAR_RATIO = (26.0 / 85.0) * (182.0 / 20.0)
         val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(2.0)
     }
 
@@ -43,6 +43,6 @@ object HoodConstants {
 
         val hoodServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(INVERTED)
-            .withRange(range.endInclusive)
+            .withRange(range)
     }
 }
