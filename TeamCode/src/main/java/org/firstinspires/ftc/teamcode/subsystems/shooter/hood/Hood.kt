@@ -118,11 +118,12 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * Calculate the HIVE Scoring [Hood] target [Angle] based on the distance to its target.
+     * Calculate the HIVE Scoring [Hood] target [Angle] based on the distance to its target
+     * making use of [HoodConstants.StoredPolynomials.hoodAnglePolynomial].
      */
     private fun getCalculatedHoodScoringAngle(flywheelDistanceToTarget: Distance): Angle {
         val distanceInMeters = flywheelDistanceToTarget.meters
-        val calculatedAngle = HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
+        val calculatedAngle = HoodConstants.StoredPolynomials.hoodAnglePolynomial.getOrThrow().evaluate(distanceInMeters)
 
         return Angle.fromDegrees(calculatedAngle)
     }

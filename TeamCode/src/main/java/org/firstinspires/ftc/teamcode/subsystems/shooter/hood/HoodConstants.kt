@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.shooter.hood
 
 import com.seattlesolvers.solverslib.util.InterpLUT
+import org.firstinspires.ftc.teamcode.utils.controlProfiles.Polynomials
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.servoControlModeConfiguration.ServoPositionModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Distance
@@ -44,5 +45,10 @@ object HoodConstants {
         val hoodServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(INVERTED)
             .withRange(range)
+    }
+
+    object StoredPolynomials{
+        val hoodAnglePolynomial : Result <Polynomials> = Polynomials.of(2 ,6.7727, -0.0738, -1.8254 )
+
     }
 }

@@ -4,6 +4,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor
 import com.seattlesolvers.solverslib.util.InterpLUT
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
+import org.firstinspires.ftc.teamcode.utils.controlProfiles.Polynomials
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
@@ -75,5 +76,9 @@ object FlywheelConstants {
         val leadMotorConfiguration = OpMotorExConfiguration()
             .withGenericMotorConfiguration(motorGenericConfiguration)
             .withControlModeConfiguration(velocityModeConfiguration)
+    }
+    object StoredPolynomials {
+        val scoringPolynomial : Result<Polynomials> = Polynomials.of(2, -211.942, 590.854, 1302.052)
+        val ToFPolynomial : Result<Polynomials> = Polynomials.of(2,0.06903, -0.05319, 0.25993)
     }
 }
