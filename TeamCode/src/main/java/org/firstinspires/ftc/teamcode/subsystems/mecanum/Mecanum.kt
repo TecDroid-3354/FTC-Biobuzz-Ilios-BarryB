@@ -80,7 +80,7 @@ class Mecanum(
         // Update angle controller
         if (angleController.kP != SubsystemControlGains.MECANUM_ANGLE_PID.p
             || angleController.kI != SubsystemControlGains.MECANUM_ANGLE_PID.i
-            || angleController.kD != SubsystemControlGains.MECANUM_ANGLE_PID.p) {
+            || angleController.kD != SubsystemControlGains.MECANUM_ANGLE_PID.d) {
             angleController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
         }
     }
@@ -93,9 +93,9 @@ class Mecanum(
     fun driveFollowingScaledDriverInput(driveScalar: Optional<Double>, headingScalar: Optional<Double>): Command {
         return RunCommand({
             val fieldCentricDrive = ManualDrive.fieldCentric(
-                -controller.leftX * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
-                controller.leftY * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
-                controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar.orElse(1.0),
+                controller.leftX * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                -controller.leftY * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                -controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar.orElse(1.0),
                 follower.pose().heading()
             )
 
@@ -170,7 +170,7 @@ class Mecanum(
      * @return the current in the field's frame
      */
     fun getFieldRelativeVelocity(): ChassisSpeeds {
-        return ChassisSpeeds(follower.velocity().vx, follower.velocity().vy, follower.velocity().omega)
+        return ChassisSpeeds(follower.velocity().vx * 0.0254, follower.velocity().vy * 0.0254, follower.velocity().omega)
     }
 
     /**
@@ -179,7 +179,7 @@ class Mecanum(
      * @return the current robot's velocity in the robot's frame
      */
     fun getRobotRelativeVelocity(): ChassisSpeeds {
-        return ChassisSpeeds(follower.twist().vx, follower.twist().vy, follower.twist().omega)
+        return ChassisSpeeds(follower.twist().vx * 0.0254, follower.twist().vy * 0.0254, follower.twist().omega)
     }
 
     /**
@@ -266,7 +266,7 @@ class Mecanum(
                     val generatedPath = Weaver.builder()
                         .start(currentPose.toPoint())
                         .obstacles(
-                            Zones.HIVE_FRAME_TOP_BAR, Zones.HIVE_FRAME_BOTTOM_BAR, Zones.TOP_FLOWER,
+                            Zones.HIVE_FRAME_RIGHT_BAR, Zones.HIVE_FRAME_LEFT_BAR, Zones.TOP_FLOWER,
                             Zones.BOTTOM_FLOWER, Zones.LEFT_FLOWER, Zones.RIGHT_FLOWER
                         )
                         .end(targetPose.get().toPoint())
@@ -314,7 +314,7 @@ class Mecanum(
             Weaver.builder()
                 .start(getPose().toPoint())
                 .obstacles(
-                    Zones.HIVE_FRAME_TOP_BAR, Zones.HIVE_FRAME_BOTTOM_BAR, Zones.TOP_FLOWER,
+                    Zones.HIVE_FRAME_RIGHT_BAR, Zones.HIVE_FRAME_LEFT_BAR, Zones.TOP_FLOWER,
                     Zones.BOTTOM_FLOWER, Zones.LEFT_FLOWER, Zones.RIGHT_FLOWER
                 )
                 .end(FieldTargets.TOP_FLOWER_INTAKE_POSITION.toPoint())

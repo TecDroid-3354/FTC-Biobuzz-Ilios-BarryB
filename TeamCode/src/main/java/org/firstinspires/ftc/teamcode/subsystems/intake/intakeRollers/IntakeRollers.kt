@@ -69,7 +69,7 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /**
      * Enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOOR_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
+     * @return a [Runnable] which enables the rollers at the given velocity.
      */
     fun enableIntakeRollersFloorVelocity(): Runnable {
         return {
@@ -82,7 +82,7 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /**
      * Enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
+     * @return a [Runnable] which enables the rollers with the given velocity.
      */
     fun enableIntakeRollersFlowerVelocity(): Runnable {
         return {
@@ -95,7 +95,7 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /**
      * Enables the rollers with the [SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
+     * @return a [Runnable] which enables the rollers at the given velocity.
      */
     fun enableIntakeRollersConfigurableVelocity(): Runnable {
         return {
@@ -105,6 +105,15 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
             leadIntakeRollersMotor.setVelocity(configurableIntakeRollersVelocity)
             followerIntakeRollersMotor.setVelocity(configurableIntakeRollersVelocity)
+        }
+    }
+
+    fun enableIntakeRollersReversedVelocity(): Runnable {
+        return {
+            intakeRollersTargetVelocity = SubsystemPresetTargets.INTAKE_ROLLERS_REVERSED_RPM
+
+            leadIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_REVERSED_RPM)
+            followerIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_REVERSED_RPM)
         }
     }
 

@@ -161,7 +161,7 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         if (flywheelTargetVelocity < FlywheelConstants.Mechanical.VELOCITY_TARGET_THRESHOLD) return false
 
         val isWithinTolerance =  abs(
-            (flywheelTargetVelocity.minus(flywheelMotor.getVelocity().get())).rpm
+            (flywheelTargetVelocity.rpm.minus(-flywheelMotor.getVelocity().get().rpm))
         ) < SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm
 
         return atTargetDebouncer.calculate(isWithinTolerance)
@@ -172,7 +172,8 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         telemetry.addLine("Flywheel")
         telemetry.addData("Flywheel Lead Motor Connected", flywheelMotor.getIsConnected().asBoolean)
         telemetry.addData("Flywheel Target Velocity RPM", flywheelTargetVelocity.rpm)
-        telemetry.addData("Flywheel Velocity RPM", flywheelMotor.getVelocity().get().rpm)
+        telemetry.addData("Flywheel Velocity RPM", -flywheelMotor.getVelocity().get().rpm)
+        telemetry.addData("At target", getIsAtTarget())
     }
 
     // Motor and interpolation configuration
@@ -180,16 +181,16 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         flywheelMotor = OpMotorEx(hardwareMap, FlywheelConstants.Identification.FLYWHEEL_LEAD_MOTOR_ID)
         flywheelMotor.applyConfigurationAndResetEncoder(FlywheelConstants.Configuration.leadMotorConfiguration)
 
-        for (point in FlywheelConstants.Interpolation.SCORING_POINTS_LIST) {
-            FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.rpm)
-        }
-
-        FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
-
-        for (point in FlywheelConstants.Interpolation.TIME_OF_FLIGHT_POINTS_LIST) {
-            FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.seconds)
-        }
-
-        FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.createLUT()
+//        for (point in FlywheelConstants.Interpolation.SCORING_POINTS_LIST) {
+//            FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.rpm)
+//        }
+//
+//        FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
+//
+//        for (point in FlywheelConstants.Interpolation.TIME_OF_FLIGHT_POINTS_LIST) {
+//            FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.seconds)
+//        }
+//
+//        FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.createLUT()
     }
 }

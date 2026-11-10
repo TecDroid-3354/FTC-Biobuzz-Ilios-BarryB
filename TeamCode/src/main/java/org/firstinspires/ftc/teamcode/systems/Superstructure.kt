@@ -8,9 +8,10 @@ import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup
-import com.seattlesolvers.solverslib.command.RetryCommand
+import com.seattlesolvers.solverslib.command.RepeatCommand
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup
 import com.seattlesolvers.solverslib.command.SubsystemBase
+import com.seattlesolvers.solverslib.command.WaitCommand
 import com.seattlesolvers.solverslib.command.WaitUntilCommand
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import com.seattlesolvers.solverslib.geometry.Pose2d
@@ -20,13 +21,14 @@ import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions
 import org.firstinspires.ftc.teamcode.constants.FieldTargets
-import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
 import org.firstinspires.ftc.teamcode.constants.RobotDimensions
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
 import org.firstinspires.ftc.teamcode.constants.ScoringTargets
+import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.constants.Zones
+import org.firstinspires.ftc.teamcode.subsystems.indexer.IndexOnDetectionCommand
 import org.firstinspires.ftc.teamcode.subsystems.indexer.Indexer
-import org.firstinspires.ftc.teamcode.subsystems.intake.intakeDeploy.IntakeDeploy
+import org.firstinspires.ftc.teamcode.subsystems.intake.intakeDeploy.FlowerDropDown
 import org.firstinspires.ftc.teamcode.subsystems.intake.intakeRollers.IntakeRollers
 import org.firstinspires.ftc.teamcode.subsystems.mecanum.Mecanum
 import org.firstinspires.ftc.teamcode.subsystems.shooter.flywheel.Flywheel
@@ -37,9 +39,12 @@ import org.firstinspires.ftc.teamcode.subsystems.vision.Limelight
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.InstantCommand
+import org.firstinspires.ftc.teamcode.utils.extensions.rumble
+import org.firstinspires.ftc.teamcode.utils.extensions.stopRumble
 import org.firstinspires.ftc.teamcode.utils.extensions.toPose2d
 import org.firstinspires.ftc.teamcode.utils.extensions.toTranslation2d
 import org.firstinspires.ftc.teamcode.utils.localization.PoseEstimator
+import org.firstinspires.ftc.teamcode.utils.sensors.DetectedColor
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.LinearVelocity
 import java.util.Optional
@@ -61,7 +66,7 @@ class Superstructure(
     private lateinit var turret: Turret
     private lateinit var poseEstimator: PoseEstimator
     private lateinit var mecanum: Mecanum
-    private lateinit var intakeDeploy: IntakeDeploy
+    private lateinit var flowerDropDown: FlowerDropDown
     private lateinit var intakeRollers: IntakeRollers
     private lateinit var indexer: Indexer
     private lateinit var hood: Hood
@@ -95,19 +100,19 @@ class Superstructure(
         // Mecanum Initialization
         mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getAngle() }
         // Intake deploy Initialization
-        intakeDeploy = IntakeDeploy(hardwareMap, telemetryM)
+
         // Intake Rollers Initialization
         intakeRollers = IntakeRollers(hardwareMap)
         // Indexer Initialization
         indexer = Indexer(hardwareMap)
         // Hood Initialization
-        //hood = Hood(hardwareMap)
+        hood = Hood(hardwareMap)
         // Flywheel Initialization
-        //flywheel = Flywheel(hardwareMap)
+        flywheel = Flywheel(hardwareMap)
         // Flywheel hard stop initialization
         flywheelHardStop = FlywheelHardStop(hardwareMap)
         // Limelight initialization
-        //limelight = Limelight(hardwareMap, mecanum)
+        limelight = Limelight(hardwareMap, mecanum)
     }
 
     override fun periodic() {
@@ -136,16 +141,32 @@ class Superstructure(
             getScoringTarget().get().toTranslation2d()
         )
     }
+    // --------------- ----- -------- --------------- //
+    // ------------ CONTROLLER COMMANDS ------------- //
+    // --------------- ----- -------- --------------- //
+    fun setControllerRumbleRepeated(): Command {
+        return RepeatCommand(
+            SequentialCommandGroup(
+                controller.rumble(1),
+                WaitCommand(1000)
+            )
+        )
+    }
+
+    fun stopControllerRumble(): Command {
+        return controller.stopRumble()
+    }
+
 
     // --------------- ----- -------- --------------- //
     // --------------- DRIVE COMMANDS --------------- //
     // --------------- ----- -------- --------------- //
 
     /**
-     * Sets the [Mecanum] default command and its initial [pose] in teleoperated init.
+     * Sets the [Mecanum] default command.
      */
     fun setDriveDefaultCommand() {
-        mecanum.defaultCommand = mecanum.driveFieldRelative()
+        mecanum.defaultCommand = mecanum.driveFollowingDriverInput()
     }
 
     /**
@@ -180,20 +201,20 @@ class Superstructure(
     }
 
     fun driveToNearestFlower(): Command {
-        return mecanum.followPathToTargetFieldPosition(getNearestFlower(), true, 1.0)
+        return mecanum.followPathToTargetFieldPosition(getNearestFlower(), true, 0.8)
     }
 
     fun driveToLeftPark(): Command {
-        return mecanum.followPathToTargetFieldPosition({ getRightPark() }, true, 1.0)
+        return mecanum.followPathToTargetFieldPosition({ getRightPark() }, true, 0.8)
     }
 
     fun driveToRightPark(): Command {
-        return mecanum.followPathToTargetFieldPosition({ getLeftPark() }, true, 1.0)
+        return mecanum.followPathToTargetFieldPosition({ getLeftPark() }, true, 0.8)
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
-    private fun isDriveOnLeftSide(): BooleanSupplier {
-        return { robotZone.isFullyInside(Zones.LEFT_SIDE) }
+    private fun isDriveOnTopSide(): BooleanSupplier {
+        return { robotZone.isFullyInside(Zones.TOP_SIDE) }
     }
 
     /** Based on the robot's position on the field (left/right side) returns the current scoring target. */
@@ -209,18 +230,18 @@ class Superstructure(
     }
 
     private fun getRedScoringTarget(): Pose {
-        return if (robotZone.position.y > FieldDimensions.RED_HIVE_CENTER_REFERENCE.y) {
-            if (isDriveOnLeftSide().asBoolean) ScoringTargets.RED_HIVE_LEFT_BOTTOM_TARGET else ScoringTargets.RED_HIVE_RIGHT_BOTTOM_TARGET
+        return if (robotZone.position.x > FieldDimensions.RED_HIVE_CENTER_REFERENCE.x) {
+            if (isDriveOnTopSide().asBoolean) ScoringTargets.RED_HIVE_TOP_RIGHT_TARGET else ScoringTargets.RED_HIVE_BOTTOM_RIGHT_TARGET
         } else {
-            if (isDriveOnLeftSide().asBoolean) ScoringTargets.RED_HIVE_LEFT_TOP_TARGET else ScoringTargets.RED_HIVE_RIGHT_TOP_TARGET
+            if (isDriveOnTopSide().asBoolean) ScoringTargets.RED_HIVE_TOP_LEFT_TARGET else ScoringTargets.RED_HIVE_BOTTOM_LEFT_TARGET
         }
     }
 
     private fun getBlueScoringTarget(): Pose {
-        return if (robotZone.position.y > FieldDimensions.BLUE_HIVE_CENTER_REFERENCE.y) {
-            if (isDriveOnLeftSide().asBoolean) ScoringTargets.BLUE_HIVE_LEFT_BOTTOM_TARGET else ScoringTargets.BLUE_HIVE_RIGHT_BOTTOM_TARGET
+        return if (robotZone.position.x > FieldDimensions.BLUE_HIVE_CENTER_REFERENCE.x) {
+            if (isDriveOnTopSide().asBoolean) ScoringTargets.BLUE_HIVE_TOP_RIGHT_TARGET else ScoringTargets.BLUE_HIVE_BOTTOM_RIGHT_TARGET
         } else {
-            if (isDriveOnLeftSide().asBoolean) ScoringTargets.BLUE_HIVE_LEFT_TOP_TARGET else ScoringTargets.BLUE_HIVE_RIGHT_TOP_TARGET
+            if (isDriveOnTopSide().asBoolean) ScoringTargets.BLUE_HIVE_TOP_LEFT_TARGET else ScoringTargets.BLUE_HIVE_BOTTOM_LEFT_TARGET
         }
     }
 
@@ -267,6 +288,7 @@ class Superstructure(
      */
     fun setScoringSequence(): Command {
         return ParallelCommandGroup(
+            setIndexerReversedPreset(),
             setFlywheelCalculatedVelocity(),
             setHoodCalculatedAngle(),
             WaitUntilCommand { isFlywheelAtTarget() && isTurretAtTarget() }
@@ -274,6 +296,35 @@ class Superstructure(
                 .andThen(WaitUntilCommand { isFlywheelHardStopAtTarget() })
                 .andThen(setIndexerShootingPreset()),
         )
+    }
+
+    fun setConfigurableScoringSequence(): Command {
+        return setIndexerReversedPreset().andThen(ParallelCommandGroup(
+            setFlywheelConfigurableControl(),
+            setHoodConfigurableControl(),
+            WaitCommand(1500)
+                .andThen(clearPathToFlywheel())
+                .andThen(stopIndexer())
+                .andThen(WaitCommand(1000))
+                .andThen(setIndexerShootingPreset())
+                .andThen(setIntakeRollersConfigurableControl()),
+        ))
+    }
+
+    fun setPresetScoringSequence(): Command {
+        return setIndexerReversedPreset().alongWith(setIntakeRollersReversedVelocity()).andThen(
+            ParallelCommandGroup(
+                setFlywheelPresetVelocity(),
+                setHoodPresetAngle(),
+                WaitCommand(600).andThen(stopIntakeRollers().alongWith(stopIndexer()))
+                    .andThen(WaitUntilCommand { isFlywheelAtTarget() })
+                    .andThen(clearPathToFlywheel())
+                    .andThen(WaitCommand(500))
+                    .andThen(setIndexerShootingPreset())
+                    .andThen(setIntakeRollersFloorVelocity())
+                    .andThen(WaitCommand(300))
+                    .andThen(stopIntakeRollers())
+            ))
     }
 
     /**
@@ -286,54 +337,42 @@ class Superstructure(
             setHoodHomeAngle(),
             stopIndexer(),
             blockPathToFlywheel(),
+            stopIntakeRollers()
         )
     }
 
     /**
-     * A [ParallelCommandGroup] which sets the [IntakeDeploy] angle to intake from the floor, once it has
+     * A [ParallelCommandGroup] which sets the [FlowerDropDown] angle to intake from the floor, once it has
      * reached its target, the [IntakeRollers] will be enabled. The [Indexer] is enabled simultaneously
      * with a minimum velocity.
      */
     fun setFloorIntakeSequence(): Command {
         return ParallelCommandGroup(
-            SequentialCommandGroup(
-                setIntakeDeployFloorAngle(),
-                WaitUntilCommand { isIntakeDeployAtTarget() },
-                setIntakeRollersFloorVelocity()),
-            setIndexerIdlePreset()
+            //setDropDownFloorAngle(),
+            setIntakeRollersFloorVelocity(),
+            indexOnDetection { getIntakeDetectedColor() == DetectedColor.YELLOW }
         )
     }
 
     /**
-     * A [ParallelCommandGroup] which sets the [IntakeDeploy] angle to intake from the flower, once it has
+     * A [ParallelCommandGroup] which sets the [FlowerDropDown] angle to intake from the flower, once it has
      * reached its target, the [IntakeRollers] will be enabled with their target velocity.
      * The [Indexer] is enabled simultaneously with a minimum velocity.
      * The [Hood] is driven to its max position if scoring in the flower is desired.
      * The [Turret]'s target angle becomes zero, to score inside the flower.
      */
     fun setFlowerIntakeSequence(): Command {
-        return ParallelCommandGroup(
-            SequentialCommandGroup(
-                setIntakeDeployFlowerAngle(),
-                WaitUntilCommand { isIntakeDeployAtTarget() },
-                setIntakeRollersFlowerVelocity()
-            ),
-            setIndexerIdlePreset(),
-            setHoodPresetAngle(),
-            setTurretZeroAngle()
-        )
+        return ParallelCommandGroup()
     }
 
     /**
-     * A [ParallelCommandGroup] which deploys the [IntakeDeploy], stop the [IntakeRollers] and
+     * A [ParallelCommandGroup] which deploys the [FlowerDropDown], stop the [IntakeRollers] and
      * sets the [Hood] to its home angle.
      */
     fun setIntakeIdle(): Command {
         return ParallelCommandGroup(
-            setIntakeDeployFloorAngle(),
-            stopIntakeRollers(),
-            stopIndexer(),
-            setHoodHomeAngle()
+            //setDropDownFloorAngle(),
+            stopIntakeRollers()
         )
     }
 
@@ -348,9 +387,9 @@ class Superstructure(
             {
                 mecanum.getAngleFromSubsystemToTarget(
                     scoringTarget.toTranslation2d(), robotToTurretPose.translation,
-                ).minus(getTurretYawCorrection(
+                ).plus(Rotation2d(Math.PI))/*.minus(getTurretYawCorrection(
                     getVirtualDistance(turretDistanceToTarget)
-                ))
+                ))*/
             }, { mecanum.getRotation() },
         )
     }
@@ -375,9 +414,24 @@ class Superstructure(
         return indexer.enableIndexerIdleVelocity().InstantCommand(indexer)
     }
 
+    /** Enables the preset reversed velocity value of the [Indexer]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
+    fun setIndexerReversedPreset(): Command {
+        return indexer.enableIndexerReversedVelocity().InstantCommand(indexer)
+    }
+
     /** Stops the [Indexer] */
     fun stopIndexer(): Command {
-        return indexer.stopIndexer()
+        return indexer.stopIndexer().InstantCommand(indexer)
+    }
+
+    fun indexOnDetection(ballDetected: BooleanSupplier): Command {
+        return IndexOnDetectionCommand(
+            ballDetected,
+            SubsystemTolerances.STEPPED_INDEX_TIME_FOR_STOP,
+            indexer.enableIndexerIdleVelocity(),
+            indexer.stopIndexer(),
+            indexer
+        )
     }
 
     /** Returns whether the [Indexer] has reached its velocity target */
@@ -390,29 +444,37 @@ class Superstructure(
         return indexer.isIndexerFull()
     }
 
+    fun getTopDetectedColor(): DetectedColor {
+        return indexer.getTopDetectedColor()
+    }
+
+    fun getIntakeDetectedColor(): DetectedColor {
+        return indexer.getBottomDetectedColor()
+    }
+
     // --------------- ------- -------- --------------- //
     // ------------ INTAKE DEPLOY COMMANDS ------------ //
     // --------------- ------- -------- --------------- //
 
 
-    /** Enables the configurable targets of the [IntakeDeploy]. You can edit them through the Panels UI */
-    fun setIntakeDeployConfigurableControl(): Command {
-        return intakeDeploy.setIntakeDeployConfigurableAngle().InstantCommand(intakeDeploy)
+    /** Enables the configurable targets of the [FlowerDropDown]. You can edit them through the Panels UI */
+    fun setDropDownConfigurableControl(): Command {
+        return flowerDropDown.setFlowerDropDownConfigurableAngle().InstantCommand(flowerDropDown)
     }
 
-    /** Enables the preset floor intake angle value of the [IntakeDeploy]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
-    fun setIntakeDeployFloorAngle(): Command {
-        return intakeDeploy.setIntakeDeployFloorAngle().InstantCommand(intakeDeploy)
+    /** Enables the preset floor intake angle value of the [FlowerDropDown]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
+    fun setDropDownFloorAngle(): Command {
+        return flowerDropDown.setFlowerDropDownFloorAngle().InstantCommand(flowerDropDown)
     }
 
-    /** Enables the preset flower intake angle value of the [IntakeDeploy]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
-    fun setIntakeDeployFlowerAngle(): Command {
-        return intakeDeploy.setIntakeDeployFlowerAngle().InstantCommand(intakeDeploy)
+    /** Enables the preset flower intake angle value of the [FlowerDropDown]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
+    fun setDropDownFlowerAngle(): Command {
+        return flowerDropDown.setFlowerDropDownFlowerAngle().InstantCommand(flowerDropDown)
     }
 
-    /** Returns whether the [IntakeDeploy] has reached its angle target */
-    fun isIntakeDeployAtTarget(): Boolean {
-        return intakeDeploy.getIsAtTarget()
+    /** Returns whether the [FlowerDropDown] has reached its angle target */
+    fun isDropDownAtTarget(): Boolean {
+        return flowerDropDown.getIsAtTarget()
     }
 
     // --------------- ------- -------- --------------- //
@@ -432,6 +494,10 @@ class Superstructure(
     /** Enables the preset flower intake velocity value of the [IntakeRollers]. Value can be found in [org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets] */
     fun setIntakeRollersFlowerVelocity(): Command {
         return intakeRollers.enableIntakeRollersFlowerVelocity().InstantCommand(intakeRollers)
+    }
+
+    fun setIntakeRollersReversedVelocity(): Command {
+        return intakeRollers.enableIntakeRollersReversedVelocity().InstantCommand(this)
     }
 
     /** Stops the [IntakeRollers] */
@@ -517,7 +583,6 @@ class Superstructure(
     // ---------------- HOOD COMMANDS --------------- //
     // --------------- ----- -------- --------------- //
 
-
     /** Enables the configurable targets of the [Hood]. You can edit them through the Panels UI */
     fun setHoodConfigurableControl(): Command {
         return hood.setHoodConfigurableAngle().InstantCommand(hood)
@@ -587,7 +652,7 @@ class Superstructure(
     }
 
     // --------------- ----- -------- --------------- //
-    // --------------- OPMODE RUNNABLE -------------- //
+    // -------------- OP MODE RUNNABLE -------------- //
     // --------------- ----- -------- --------------- //
 
     fun preAuto(autoCommand: Command): Runnable {
@@ -612,7 +677,7 @@ class Superstructure(
     }
 
     fun logIntakeDeploy() {
-        intakeDeploy.log(telemetryM)
+        flowerDropDown.log(telemetryM)
     }
 
     fun logIntakeRollers() {
@@ -640,6 +705,9 @@ class Superstructure(
         telemetryM.addData("Fused", mecanum.getPose())
         //telemetryM.addData("Stats", poseEstimator.stats)
         telemetryM.addData("Target", scoringTarget)
-        telemetryM.addData("Nearest Flower", getNearestFlower().get())
+
+        telemetryM.addData("Radial Velocity", robotRadialVelocityToTarget.mps)
+        telemetryM.addData("Tangential Velocity", robotTangentialVelocityToTarget.mps)
+        telemetryM.addData("Tangential Velocity", turretDistanceToTarget.meters)
     }
 }

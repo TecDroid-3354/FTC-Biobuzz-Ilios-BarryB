@@ -285,7 +285,7 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
         countPerRev = newConfig.genericMotorConfiguration.ticksPerRev
         reduction = newConfig.genericMotorConfiguration.reduction
         controlMode = newConfig.controlModeConfiguration.controlMode
-        maxVelocity = AngularVelocity(100.0 / reduction)
+        maxVelocity = AngularVelocity.fromRpm(6000.0 / reduction)
         motor.applyGenericConfiguration(newConfig.genericMotorConfiguration, controlMode)
 
         when (val modeConfig = newConfig.controlModeConfiguration) {

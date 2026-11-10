@@ -11,9 +11,8 @@ object RobotTransformations {
 }
 
 object RobotDimensions {
-    // TODO Change robot dimensions to Biobuzz's season
-    val ROBOT_WIDTH = Distance.fromInches(18.0)
-    val ROBOT_LENGTH = Distance.fromInches(18.0)
+    val ROBOT_WIDTH = Distance.fromInches(17.0)
+    val ROBOT_LENGTH = Distance.fromInches(14.0)
     val ROBOT_HEIGHT = Distance.fromInches(0.0)
     val INTAKE_WIDTH = Distance.fromInches(18.0)
 }

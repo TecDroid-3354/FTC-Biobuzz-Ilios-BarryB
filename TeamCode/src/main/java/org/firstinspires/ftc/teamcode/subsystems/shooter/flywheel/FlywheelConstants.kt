@@ -4,6 +4,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor
 import com.seattlesolvers.solverslib.util.InterpLUT
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
+import org.firstinspires.ftc.teamcode.utils.controllers.invertSigns
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
@@ -18,7 +19,7 @@ object FlywheelConstants {
     }
 
     object Mechanical {
-        const val GEAR_RATIO = (50.0 / 30.0)
+        const val GEAR_RATIO = (55.0 / 24.0)
         val VELOCITY_TARGET_THRESHOLD = AngularVelocity.fromRpm(500.0)
     }
 
@@ -59,7 +60,7 @@ object FlywheelConstants {
     }
 
     object Configuration {
-        private const val INVERTED = true
+        private const val INVERTED = false
 
         private val zeroPowerBehavior = Motor.ZeroPowerBehavior.FLOAT
 
@@ -69,8 +70,8 @@ object FlywheelConstants {
             .withZeroPowerBehavior(zeroPowerBehavior)
 
         private val velocityModeConfiguration = MotorVelocityModeConfiguration()
-            .withVelocityCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_PID)
-            .withFeedforwardCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
+            .withVelocityCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_PID.invertSigns())
+            .withFeedforwardCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD.invertSigns())
 
         val leadMotorConfiguration = OpMotorExConfiguration()
             .withGenericMotorConfiguration(motorGenericConfiguration)

@@ -145,7 +145,7 @@ class PoseEstimator(
         val a = samples[i]
         val b = samples[i + 1]
         val k = (t - a.t) / (b.t - a.t)
-        return Pair(a.heading + k * wrapRadians(b.heading - a.heading), a.turret + k * (b.turret - a.turret))
+        return Pair(a.heading + k * wrapRadians(b.heading - a.heading), a.turret + k * wrapRadians(b.turret - a.turret))
     }
 
     private fun cameraYawRate(t: Double): Double {

@@ -23,17 +23,11 @@ object LocalizationConstants {
 
     /** Measure these from CAD. They are the whole "turret is not at the robot's center" fix. */
     val mount = TurretCameraMount(
-        pivotInRobot = Vec2(
-            0.0,
-            0.0
-        ),          // TODO turret axis relative to the robot center (+x forward, +y left)
-        cameraInTurret = Vec2(
-            0.0,
-            0.0
-        ),        // TODO lens position relative to the turret axis, turret facing +x
-        cameraYawOnTurret = 0.0,                // TODO 0 if the lens looks where the turret looks
-        cameraHeight = 0.0,                     // TODO lens height above the floor (must be > 0)
-        cameraPitchUp = Math.toRadians(0.0)     // TODO lens tilt above horizontal. Every tag is above the camera, so this is > 0
+        pivotInRobot = Vec2(-0.169924, 0.0),
+        cameraInTurret = Vec2(3.782671, -1.419488),
+        cameraYawOnTurret = 0.0,
+        cameraHeight = 15.323206,
+        cameraPitchUp = Math.toRadians(50.0)
     )
 
     const val TAG_HEIGHT_AT_LEVEL = 42.55    // tag center height with the hive level (never happens in a match)

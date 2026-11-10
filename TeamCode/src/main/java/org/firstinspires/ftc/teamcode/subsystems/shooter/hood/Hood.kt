@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
+import com.seattlesolvers.solverslib.hardware.servos.ServoEx
 import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -27,6 +28,8 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
     init {
         // Initialization code
         configureServo()
+
+        setHoodHomeAngle().run()
     }
 
     /** Runs every cycle */
@@ -43,6 +46,10 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         configurableHoodTargetAngle = Angle.fromDegrees(newHoodAngle)
     }
 
+    private fun transformHoodAngle(hoodAngle: Angle): Angle {
+        return Angle.fromDegrees(25.0).minus(hoodAngle)
+    }
+
     /**
      * Sets a new angle with the [SubsystemPresetTargets.HOOD_PRESET_ANGLE] value.
      * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets the new hood angle.
@@ -52,41 +59,41 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
             hoodTargetAngle = SubsystemPresetTargets.HOOD_PRESET_ANGLE
 
             hoodServo.setServoPosition(
-                SubsystemPresetTargets.HOOD_PRESET_ANGLE,
+                transformHoodAngle(SubsystemPresetTargets.HOOD_PRESET_ANGLE),
                 SubsystemLimits.HOOD_ANGLE_LIMITS,
-                HoodConstants.Mechanical.GEAR_RATIO
+                1.0
             )
         }
     }
 
     /**
      * Sets a new angle with the [SubsystemPresetTargets.HOOD_HOME_ANGLE] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets the new hood angle.
+     * @return a [Runnable] which sets the new hood angle.
      */
     fun setHoodHomeAngle(): Runnable {
         return {
             hoodTargetAngle = SubsystemPresetTargets.HOOD_HOME_ANGLE
 
             hoodServo.setServoPosition(
-                SubsystemPresetTargets.HOOD_HOME_ANGLE,
+                transformHoodAngle(SubsystemPresetTargets.HOOD_HOME_ANGLE),
                 SubsystemLimits.HOOD_ANGLE_LIMITS,
-                HoodConstants.Mechanical.GEAR_RATIO
+                1.0
             )
         }
     }
 
     /**
      * Sets a new angle with the [SubsystemConfigurableTargets.HOOD_CONFIGURABLE_DEGREES] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which sets the new hood angle.
+     * @return a [Runnable] which sets the new hood angle.
      */
     fun setHoodConfigurableAngle(): Runnable {
         return {
             hoodTargetAngle = configurableHoodTargetAngle
 
             hoodServo.setServoPosition(
-                configurableHoodTargetAngle,
+                transformHoodAngle(configurableHoodTargetAngle),
                 SubsystemLimits.HOOD_ANGLE_LIMITS,
-                HoodConstants.Mechanical.GEAR_RATIO
+                1.0
             )
         }
     }
@@ -103,9 +110,9 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
             hoodTargetAngle = Angle.fromDegrees(clampedAngleDeg)
 
             hoodServo.setServoPosition(
-                hoodCalculatedAngle,
+                transformHoodAngle(hoodCalculatedAngle),
                 SubsystemLimits.HOOD_ANGLE_LIMITS,
-                HoodConstants.Mechanical.GEAR_RATIO
+                1.0
             )
         }
     }
@@ -139,7 +146,7 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
     // Logs useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Hood")
-        telemetry.addData("Hood Position Degrees", hoodServo.getRawPosition() * HoodConstants.Configuration.range.endInclusive.degrees)
+        telemetry.addData("Hood Position Degrees", 25.0 - (hoodServo.getRawPosition() * HoodConstants.Configuration.range.endInclusive.degrees))
         telemetry.addData("Hood Target Position Degrees", hoodTargetAngle.degrees)
     }
 
@@ -148,10 +155,10 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         hoodServo = OpServoEx(hardwareMap, HoodConstants.Identification.HOOD_SERVO_ID)
         hoodServo.applyConfiguration(HoodConstants.Configuration.hoodServoConfiguration)
 
-        for (point in HoodConstants.Interpolation.SCORING_POINTS_LIST) {
-            HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.degrees)
-        }
-
-        HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
+//        for (point in HoodConstants.Interpolation.SCORING_POINTS_LIST) {
+//            HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.degrees)
+//        }
+//
+//        HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
     }
 }

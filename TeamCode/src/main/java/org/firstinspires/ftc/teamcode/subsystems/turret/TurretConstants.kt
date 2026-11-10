@@ -12,22 +12,26 @@ import org.firstinspires.ftc.teamcode.utils.units.Voltage
 object TurretConstants {
 
     object Identification {
-        const val TURRET_LEFT_SERVO_ID = "rightTurretServo"
+        const val TURRET_LEFT_SERVO_ID = "leftTurretServo"
 
-        const val TURRET_RIGHT_SERVO_ID = "leftTurretServo"
+        const val TURRET_RIGHT_SERVO_ID = "rightTurretServo"
+
+        const val TURRET_ABSOLUTE_ID    = "turretAbs"
     }
 
     object Mechanical {
         const val GEAR_RATIO = 1.0
-        val TARGET_ANGLE_THRESHOLD = Angle.fromDegrees(1.0)
 
-        val turretServosRange = Angle.fromDegrees(-180.0)..Angle.fromDegrees(180.0)
+        val TURRET_ENCODER_ANGLE_OFFSET = Angle.fromDegrees(0.0)
+
+        val turretServosRange = Angle.fromDegrees(-158.18)..Angle.fromDegrees(156.54)
     }
 
     object Configuration {
-        private const val LEFT_INVERTED = false
-
+        const val LEFT_INVERTED = false
         private const val RIGHT_INVERTED = false
+
+        val ABSOLUTE_MAX_VOLTAGE = Voltage(3.3)
 
         val leftTurretServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(LEFT_INVERTED)

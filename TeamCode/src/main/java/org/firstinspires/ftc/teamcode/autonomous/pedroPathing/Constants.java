@@ -28,7 +28,6 @@ import java.util.Optional;
  */
 public class Constants {
 
-    // TODO Tune mecanum as motor directions will probably change
     public static MecanumConfig drivetrainConfig = PedroPathing.INSTANCE.createMecanumConfig(
             Optional.of(DcMotorSimple.Direction.FORWARD),
             Optional.of(DcMotorSimple.Direction.REVERSE),
@@ -38,30 +37,28 @@ public class Constants {
             Optional.of(0.01)
     );
 
-    // TODO tune localizer again
     public static PinpointConfig localizerConfig = PedroPathing.INSTANCE.createPinpointConfig(
-            Optional.of(GoBildaPinpointDriver.EncoderDirection.FORWARD),
-            Optional.of(GoBildaPinpointDriver.EncoderDirection.FORWARD),
-            Optional.of(Distance.fromInches(3.225225613811823)),
-            Optional.of(Distance.fromInches(-6.087658499169537))
+            Optional.of(GoBildaPinpointDriver.EncoderDirection.REVERSED),
+            Optional.of(GoBildaPinpointDriver.EncoderDirection.REVERSED),
+            Optional.of(Distance.fromInches(7.095777256282296)),
+            Optional.of(Distance.fromInches(-0.9259914788674183))
     );
 
-    // TODO Tune new chassis
     public static ForesightConfig foresightConfig = PedroPathing.INSTANCE.createForesightConfig(
-            Optional.of(LinearVelocity.fromInps(76.35614907285614)),
-            Optional.of(LinearVelocity.fromInps(56.70816675683559)),
-            Optional.of(LinearVelocity.fromInps(31.695582816741506)),
-            Optional.of(LinearVelocity.fromInps(70.7024960555782)),
-            Optional.of(Vector2D.cartesian(0.04122564769086424, 0.012900349474236858)),
-            Optional.of(Controller.proportional(4.476963220918328)),
-            Optional.of(Matrix.diag(0.09080938797590168, 0.04076852583434593)),
-            Optional.of(Matrix.diag(0.0012044698822213874, 0.0022763626170223357)),
-            Optional.of(Controller.proportionalFeedforward(0.0132022240880816)),
-            Optional.of(Controller.proportionalFeedforward(0.011221890474869359)),
-            Optional.of(Controller.proportional(0.19681124258833685)),
-            Optional.of(Controller.proportional(0.07271649524313407)),
-            Optional.of(Controller.proportional(0.42481893385615904)),
-            Optional.of(Controller.proportional(0.15695924468887693))
+            Optional.of(LinearVelocity.fromInps(73.70766256965302)),
+            Optional.of(LinearVelocity.fromInps(50.95451912606664)),
+            Optional.of(LinearVelocity.fromInps(66.2330040361729)),
+            Optional.of(LinearVelocity.fromInps(98.1109111501078)),
+            Optional.of(Vector2D.cartesian(0.052388621977635726, 0.007584251199523778)),
+            Optional.of(Controller.proportional(4.899468912226798)),
+            Optional.of(Matrix.diag(0.10488295618353324, 0.06963286700854306)),
+            Optional.of(Matrix.diag(0.0015608973032158766, 0.0017147221775882472)),
+            Optional.of(Controller.proportionalFeedforward(0.013414203480727744)),
+            Optional.of(Controller.proportionalFeedforward(0.011402072958618581)),
+            Optional.of(Controller.proportional(0.30204688451928496)),
+            Optional.of(Controller.proportional(0.11159825298847863)),
+            Optional.of(Controller.proportional(0.7294004144110938)),
+            Optional.of(Controller.proportional(0.26949396318687474))
     );
 
     public static Follower createFollower(HardwareMap hardwareMap) {

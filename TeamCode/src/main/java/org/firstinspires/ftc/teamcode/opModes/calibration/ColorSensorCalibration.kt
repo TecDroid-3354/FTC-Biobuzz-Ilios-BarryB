@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opModes.calibration
 
 import com.bylazar.configurables.annotations.Configurable
+import com.qualcomm.robotcore.eventloop.opmode.Disabled
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
 import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorV3.Companion.rgbToHsv
@@ -15,7 +16,7 @@ import org.firstinspires.ftc.teamcode.utils.sensors.DetectedColor.YELLOW
 import org.firstinspires.ftc.teamcode.utils.sensors.HueRange
 import java.util.Locale
 
-private const val SENSOR_NAME = "indexerColor"
+private const val SENSOR_NAME = "tcs"
 private const val SAMPLES = 10                 // reads averaged per capture
 
 /** Live-editable from the Panels configurables tab. Doubles on purpose (safest type for Panels). */
@@ -36,6 +37,7 @@ private class Edge {
 private fun f(x: Number) = "%.3f".format(Locale.US, x.toDouble())
 
 @TeleOp(name = "Color Sensor Calibration", group = "Calibration")
+@Disabled
 class ColorSensorCalibration: LinearOpMode() {
 
     private val config = ColorCalibrationConfig

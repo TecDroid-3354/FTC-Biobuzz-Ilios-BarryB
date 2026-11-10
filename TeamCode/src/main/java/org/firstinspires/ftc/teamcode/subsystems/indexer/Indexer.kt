@@ -1,13 +1,13 @@
 package org.firstinspires.ftc.teamcode.subsystems.indexer
 
 import com.bylazar.telemetry.TelemetryManager
-import com.qualcomm.ftccommon.configuration.EditSwapUsbDevices
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
+import com.seattlesolvers.solverslib.util.Debouncer
 import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
@@ -16,7 +16,6 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
-import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorConfig
 import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorV3
 import org.firstinspires.ftc.teamcode.utils.sensors.DetectedColor
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
@@ -26,11 +25,15 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     private lateinit var indexerMotor: OpMotorEx
 
-    private var indexerTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+    private var indexerTargetVelocity: AngularVelocity = AngularVelocity()
 
-    private var configurableIndexerVelocity: AngularVelocity = AngularVelocity(0.0)
+    private var configurableIndexerVelocity: AngularVelocity = AngularVelocity()
 
-    private lateinit var topColorSensor: ColorSensorV3; private lateinit var bottomLeftColorSensor: ColorSensorV3; private lateinit var bottomRightColorSensor: ColorSensorV3;
+    private lateinit var topColorSensor                     : ColorSensorV3
+    private lateinit var bottomLeftColorSensor              : ColorSensorV3
+    private lateinit var bottomRightColorSensor             : ColorSensorV3
+
+    private val colorDebouncer: Debouncer = Debouncer(IndexerConstants.ColorSensor.REQUIRED_DETECTION_TIME_CONSISTENCY_FOR_INDEXER_FULL.seconds, Debouncer.DebounceType.Both)
 
     init {
         // Initialization code
@@ -73,7 +76,7 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /**
      * Enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_SHOOTING_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers at the given velocity.
+     * @return a [Runnable] which enables the rollers at the given velocity.
      */
     fun enableIndexerShootingVelocity(): Runnable {
         return {
@@ -85,7 +88,7 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /**
      * Enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
+     * @return a [Runnable] which enables the rollers with the given velocity.
      */
     fun enableIndexerIdleVelocity(): Runnable {
         return {
@@ -96,8 +99,20 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
+     * Enables the rollers with the [SubsystemPresetTargets.INDEXER_PRESET_IDLE_RPM] value.
+     * @return a [Runnable] which enables the rollers with the given velocity.
+     */
+    fun enableIndexerReversedVelocity(): Runnable {
+        return {
+            indexerTargetVelocity = SubsystemPresetTargets.INDEXER_REVERSED_RPM
+
+            indexerMotor.setVelocity(SubsystemPresetTargets.INDEXER_REVERSED_RPM)
+        }
+    }
+
+    /**
      * Enables the rollers with the [SubsystemConfigurableTargets.INDEXER_CONFIGURABLE_RPM] value.
-     * @return an [com.seattlesolvers.solverslib.command.InstantCommand] which enables the rollers with the given velocity.
+     * @return a [Runnable] which enables the rollers with the given velocity.
      */
     fun enableIndexerConfigurableVelocity(): Runnable {
         return {
@@ -112,12 +127,12 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
     /**
      * Creates an [com.seattlesolvers.solverslib.command.InstantCommand] based off the [OpMotorEx.stopMotor] method.
      */
-    fun stopIndexer(): Command {
-        return InstantCommand({
-            indexerTargetVelocity = AngularVelocity(0.0)
+    fun stopIndexer(): Runnable {
+        return Runnable {
+            indexerTargetVelocity = AngularVelocity()
             indexerMotor.stopMotor()
             indexerMotor.stopMotor()
-        }, this)
+        }
     }
 
     /**
@@ -132,26 +147,23 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /** @return the color detected by the top color sensor */
-    private fun getTopDetectedColor(): DetectedColor {
+    fun getTopDetectedColor(): DetectedColor {
         return topColorSensor.getColor()
     }
 
     /** @return the color detected by the bottom color sensors */
-    private fun getBottomDetectedColor(): DetectedColor {
-        return if (bottomRightColorSensor.getColor() == bottomLeftColorSensor.getColor()) bottomLeftColorSensor.getColor() else DetectedColor.NO_DETECTION
+    fun getBottomDetectedColor(): DetectedColor {
+        return when {
+            bottomRightColorSensor.getColor() == bottomLeftColorSensor.getColor() -> bottomLeftColorSensor.getColor()
+            bottomRightColorSensor.getColor() != DetectedColor.NO_DETECTION -> bottomRightColorSensor.getColor()
+            bottomLeftColorSensor.getColor() != DetectedColor.NO_DETECTION -> bottomLeftColorSensor.getColor()
+            else -> DetectedColor.NO_DETECTION
+        }
     }
 
     /** @return whether the indexer is full */
     fun isIndexerFull(): Boolean {
-        var consistencyTracker = 0.0
-
-        return if (getTopDetectedColor() == getBottomDetectedColor()) {
-            consistencyTracker++
-            consistencyTracker >= IndexerConstants.ColorSensor.REQUIRED_DETECTION_CONSISTENCY
-        } else {
-            consistencyTracker = 0.0
-            false
-        }
+        return colorDebouncer.calculate(getBottomDetectedColor() == getTopDetectedColor())
     }
 
     // Valuable indexer information, call inside Robot.printTelelmetry()
@@ -159,6 +171,7 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
         telemetry.addLine("Indexer")
         telemetry.addData("Indexer Velocity RPM", indexerMotor.getVelocity().get().rpm)
         telemetry.addData("Indexer Target Velocity RPM", indexerTargetVelocity.rpm)
+        telemetry.addData("At target", getIsAtTarget())
 
         telemetry.addLine("Color Sensors")
         telemetry.addData("Top Color", getTopDetectedColor())
@@ -170,8 +183,8 @@ class Indexer(private val hardwareMap: HardwareMap): SubsystemBase() {
         indexerMotor = OpMotorEx(hardwareMap, IndexerConstants.Identification.INDEXER_MOTOR_ID)
         indexerMotor.applyConfigurationAndResetEncoder(IndexerConstants.Configuration.indexerConfiguration)
 
-        topColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.topSensorConfig)
-        bottomLeftColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.bottomLeftSensorConfig)
-        bottomRightColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.bottomRightSensorConfig)
+        topColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.TOP_SENSOR_CONFIG)
+        bottomLeftColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.BOTTOM_LEFT_SENSOR_CONFIG)
+        bottomRightColorSensor = ColorSensorV3(hardwareMap, IndexerConstants.ColorSensor.BOTTOM_RIGHT_SENSOR_CONFIG)
     }
 }

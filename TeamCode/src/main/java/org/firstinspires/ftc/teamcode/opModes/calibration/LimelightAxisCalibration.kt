@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opModes.calibration
 
 import com.qualcomm.hardware.limelightvision.Limelight3A
+import com.qualcomm.robotcore.eventloop.opmode.Disabled
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit
@@ -14,6 +15,7 @@ import org.firstinspires.ftc.teamcode.subsystems.vision.LimelightConstants
  * If any of that is flipped, fix the mapping in Limelight.periodic (one line), nothing else.
  */
 @TeleOp(group = "Calibration", name = "Limelight Axis Calibration")
+@Disabled
 class LimelightAxisCalibration : LinearOpMode() {
     override fun runOpMode() {
         val limelight = hardwareMap.get(Limelight3A::class.java, LimelightConstants.Identification.LIMELIGHT_ID)
@@ -29,6 +31,7 @@ class LimelightAxisCalibration : LinearOpMode() {
                 result.fiducialResults.forEach { f ->
                     val p = f.targetPoseCameraSpace.position.toUnit(DistanceUnit.INCH)
                     telemetry.addData("tag ${f.fiducialId}", "right=%.1f  down=%.1f  out=%.1f", p.x, p.y, p.z)
+                    telemetry.addData("Target pose", f.targetPoseCameraSpace.position.toUnit(DistanceUnit.INCH))
                 }
             }
             telemetry.update()

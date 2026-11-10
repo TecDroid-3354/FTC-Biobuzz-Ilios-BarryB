@@ -7,7 +7,7 @@ import kotlin.math.PI
 
 // -------------------- DISTANCE --------------------
 @JvmInline
-value class Distance(val meters: Double): Comparable<Distance> {
+value class Distance(val meters: Double = 0.0): Comparable<Distance> {
     companion object {
         @JvmStatic
         fun fromCm(cm: Double)                              : Distance              = Distance(cm / 100.0)
@@ -33,7 +33,7 @@ value class Distance(val meters: Double): Comparable<Distance> {
 
 // -------------------- ANGLE --------------------
 @JvmInline
-value class Angle(val rotations: Double): Comparable<Angle> {
+value class Angle(val rotations: Double = 0.0): Comparable<Angle> {
     companion object {
         @JvmStatic
         fun fromDegrees(deg: Double)                        : Angle                 = Angle(deg / 360.0)
@@ -57,7 +57,7 @@ value class Angle(val rotations: Double): Comparable<Angle> {
 
 // -------------------- LINEAR VELOCITY --------------------
 @JvmInline
-value class LinearVelocity(val mps: Double): Comparable<LinearVelocity> {
+value class LinearVelocity(val mps: Double = 0.0): Comparable<LinearVelocity> {
     companion object {
         @JvmStatic
         fun fromCmps(cmps: Double)                          : LinearVelocity        = LinearVelocity(cmps / 100.0)
@@ -82,7 +82,7 @@ value class LinearVelocity(val mps: Double): Comparable<LinearVelocity> {
 
 // -------------------- ANGULAR VELOCITY --------------------
 @JvmInline
-value class AngularVelocity(val rps: Double): Comparable<AngularVelocity> {
+value class AngularVelocity(val rps: Double = 0.0): Comparable<AngularVelocity> {
     companion object {
         @JvmStatic
         fun fromDegPerSec(degps: Double)                    : AngularVelocity       = AngularVelocity(degps / 360.0)
@@ -109,7 +109,7 @@ value class AngularVelocity(val rps: Double): Comparable<AngularVelocity> {
 
 // -------------------- ACCELERATION --------------------
 @JvmInline
-value class AngularAcceleration(val rotPerSecPerSec: Double): Comparable<AngularAcceleration> {
+value class AngularAcceleration(val rotPerSecPerSec: Double = 0.0): Comparable<AngularAcceleration> {
     companion object {
         @JvmStatic
         fun fromDegPerSecSq(degPerSecPerSec: Double)        : AngularAcceleration   = AngularAcceleration(degPerSecPerSec / 360.0)
@@ -134,7 +134,7 @@ value class AngularAcceleration(val rotPerSecPerSec: Double): Comparable<Angular
 
 // -------------------- MASS --------------------
 @JvmInline
-value class Mass(val kilograms: Double): Comparable<Mass> {
+value class Mass(val kilograms: Double = 0.0): Comparable<Mass> {
     companion object {
         @JvmStatic
         fun fromKilograms(kilograms: Double)                : Mass                  = Mass(kilograms)
@@ -157,7 +157,7 @@ value class Mass(val kilograms: Double): Comparable<Mass> {
 // -------------------- VOLTAGE --------------------
 
 @JvmInline
-value class Voltage(val volts: Double): Comparable<Voltage> {
+value class Voltage(val volts: Double = 0.0): Comparable<Voltage> {
 
     companion object {
         @JvmStatic
@@ -172,7 +172,7 @@ value class Voltage(val volts: Double): Comparable<Voltage> {
 }
 
 @JvmInline
-value class Current(val amps: Double): Comparable<Current> {
+value class Current(val amps: Double = 0.0): Comparable<Current> {
 
     companion object {
         @JvmStatic
@@ -187,7 +187,7 @@ value class Current(val amps: Double): Comparable<Current> {
 }
 
 @JvmInline
-value class Time(val seconds: Double) : Comparable<Time> {
+value class Time(val seconds: Double = 0.0) : Comparable<Time> {
     companion object {
         @JvmStatic
         fun fromMillis(ms: Double)      : Time = Time(ms / 1000.0)

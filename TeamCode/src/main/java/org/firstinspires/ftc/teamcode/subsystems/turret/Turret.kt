@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.turret
 
 import com.bylazar.telemetry.TelemetryManager
+import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.qualcomm.robotcore.hardware.PIDFCoefficients
@@ -10,6 +11,7 @@ import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.geometry.Rotation2d
 import com.seattlesolvers.solverslib.util.Debouncer
 import com.seattlesolvers.solverslib.util.MathUtils
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeDegrees
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
@@ -17,14 +19,19 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import org.firstinspires.ftc.teamcode.subsystems.indexer.IndexerConstants
+import org.firstinspires.ftc.teamcode.utils.devices.RTPServo.Direction
+import java.util.Formatter
 import java.util.function.Supplier
 import kotlin.math.abs
 
 class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
 
-    private lateinit var leftTurretServo: OpServoEx
+    private lateinit var leftTurretServo    : OpServoEx
 
-    private lateinit var rightTurretServo: OpServoEx
+    private lateinit var rightTurretServo   : OpServoEx
+
+    private lateinit var turretEncoder      : AnalogInput
 
     private var turretTargetAngle: Angle = Angle(0.0)
 
@@ -115,29 +122,42 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
      */
     private fun calculateTurretAngle(chassisRelativeTargetAngle: Rotation2d, chassisCurrentRotation: Rotation2d): Angle {
         val turretTargetAngle = chassisRelativeTargetAngle.minus(chassisCurrentRotation)
+        val normalizedAngle = normalizeDegrees(turretTargetAngle.degrees)
 
-        return Angle.fromDegrees(turretTargetAngle.degrees)
+        return Angle.fromDegrees(normalizedAngle)
     }
 
     /**
      * @return whether the flywheel has reached its target
      */
     fun getIsAtTarget(): Boolean {
-        if (turretTargetAngle < TurretConstants.Mechanical.TARGET_ANGLE_THRESHOLD) return false
-
         val withinTolerance = abs(
-            (turretTargetAngle.minus(rightTurretServo.getAngle())).degrees
+            (turretTargetAngle.minus(getServoAbsoluteAngle())).degrees
         ) < SubsystemTolerances.TURRET_ANGLE_TOLERANCE.degrees
 
         return atTargetDebouncer.calculate(withinTolerance)
     }
 
+    /**
+     * Gets the absolute position of the servo, not considering gear ratios
+     */
+    private fun getServoAbsoluteAngle(): Angle {
+        val currentAngle = Angle.fromDegrees(
+            (turretEncoder.voltage / TurretConstants.Configuration.ABSOLUTE_MAX_VOLTAGE.volts) * (if (TurretConstants.Configuration.LEFT_INVERTED) -360 else 360)
+        )
+        val transformedAngle = Angle.fromDegrees(
+            (currentAngle.degrees - TurretConstants.Mechanical.TURRET_ENCODER_ANGLE_OFFSET.degrees)
+        )
+
+        return Angle.fromDegrees(normalizeDegrees(transformedAngle.degrees))
+    }
+
     // Log useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Turret")
-        telemetry.addData("Turret Right Angle Degrees", rightTurretServo.getAngle().degrees)
-        telemetry.addData("Turret Left Angle Degrees", leftTurretServo.getAngle().degrees)
+        telemetry.addData("Turret Angle Degrees", getServoAbsoluteAngle().degrees * TurretConstants.Mechanical.GEAR_RATIO)
         telemetry.addData("Turret Target Angle Degrees", turretTargetAngle.degrees)
+        telemetry.addData("Turret at target", getIsAtTarget())
     }
 
     // Servo configuration
@@ -147,5 +167,7 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
 
         rightTurretServo = OpServoEx(hardwareMap, TurretConstants.Identification.TURRET_RIGHT_SERVO_ID)
         rightTurretServo.applyConfiguration(TurretConstants.Configuration.rightTurretServoConfiguration)
+
+        turretEncoder = hardwareMap.get(AnalogInput::class.java, TurretConstants.Identification.TURRET_ABSOLUTE_ID)
     }
 }

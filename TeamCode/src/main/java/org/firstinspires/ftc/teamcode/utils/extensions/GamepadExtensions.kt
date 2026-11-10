@@ -33,6 +33,7 @@ fun GamepadEx.leftTrigger()     : Trigger           { return Trigger{ this.getTr
 fun GamepadEx.leftTrigger(threshold: Double)        : Trigger { return Trigger{ this.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > threshold } }
 
 fun GamepadEx.rumble(blips: Int): Command           { return InstantCommand({ this.gamepad.rumbleBlips(blips) }) }
+fun GamepadEx.stopRumble()      : Command           { return InstantCommand({ this.gamepad.stopRumble() }) }
 
 // Gamepad buttons commands'
 fun GamepadButton.onTrue    (command: Command): GamepadButton  { this.whenPressed              (command); return this   }

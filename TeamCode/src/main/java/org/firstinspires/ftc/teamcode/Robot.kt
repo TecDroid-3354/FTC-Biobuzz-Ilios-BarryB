@@ -1,32 +1,27 @@
 package org.firstinspires.ftc.teamcode
 
 import com.bylazar.telemetry.TelemetryManager
-import com.pedropathing.follower.Follower
 import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.RepeatCommand
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
-import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
-import org.firstinspires.ftc.teamcode.subsystems.mecanum.Mecanum
 import org.firstinspires.ftc.teamcode.systems.Superstructure
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
-import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
 import org.firstinspires.ftc.teamcode.utils.extensions.cross
-import org.firstinspires.ftc.teamcode.utils.extensions.dpadLeft
-import org.firstinspires.ftc.teamcode.utils.extensions.dpadRight
 import org.firstinspires.ftc.teamcode.utils.extensions.leftBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.leftTrigger
 import org.firstinspires.ftc.teamcode.utils.extensions.onFalse
 import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
 import org.firstinspires.ftc.teamcode.utils.extensions.rightBumper
-import org.firstinspires.ftc.teamcode.utils.extensions.square
-import org.firstinspires.ftc.teamcode.utils.extensions.triangle
+import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
+import org.firstinspires.ftc.teamcode.utils.extensions.rumble
+import org.firstinspires.ftc.teamcode.utils.extensions.stopRumble
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
-import org.firstinspires.ftc.teamcode.utils.extensions.x
 
 @Suppress("JoinDeclarationAndAssignment")
 class Robot(
@@ -44,7 +39,7 @@ class Robot(
     }
 
     override fun preAuto(command: Command) {
-        superstructure.preAuto(command)
+        superstructure.preAuto(command).run()
     }
 
     /**
@@ -62,16 +57,17 @@ class Robot(
      * Runs once before the main loop of the robot [loop]
      */
     override fun preTeleOp() {
-        // TODO Uncomment when limelight is connected
-        //superstructure.preTeleop().run()
+        superstructure.preTeleop().run()
     }
 
     /* Initialize your teleop controller commands here */
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
         // TODO Check why PoseStorage doesn't work
-        superstructure.setPose(Pose(9.8, 103.7206, Math.PI / 2))
-        //superstructure.setDriveDefaultCommand()
+        superstructure.setPose(Pose(103.49, 134.45, 0.0))
+        superstructure.setDriveDefaultCommand()
+
+        superstructure.setTurretDefaultCommand()
 
         // Configure Control Bindings
         configureBindings()
@@ -94,7 +90,9 @@ class Robot(
      */
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
-        superstructure.logIntakeDeploy()
+        superstructure.logFlywheel()
+        superstructure.logOdometry()
+        superstructure.logTurret()
         telemetryManager.update(telemetry)
     }
 
@@ -107,30 +105,25 @@ class Robot(
      * Write here your controller.button() commands.
      */
     override fun configureBindings() {
-        controller.leftBumper()
-            .whileTrue(superstructure.driveToNearestFlower())
+//        controller.leftBumper()
+//            .whileTrue(superstructure.driveToNearestFlower())
+//
+//        controller.dpadRight()
+//            .whileTrue(superstructure.driveToRightPark())
+//
+//        controller.dpadLeft()
+//            .whileTrue(superstructure.driveToLeftPark())
 
-        controller.dpadRight()
-            .whileTrue(superstructure.driveToRightPark())
+        controller.rightTrigger()
+            .onTrue(superstructure.setPresetScoringSequence().alongWith(superstructure.setControllerRumbleRepeated()))
+            .onFalse(superstructure.stopShootingSequence().alongWith(superstructure.stopControllerRumble()))
 
-        controller.dpadLeft()
-            .whileTrue(superstructure.driveToLeftPark())
-
-        controller.circle()
-            .onTrue(superstructure.setTurretConfigurableAngle())
-
-        controller.triangle()
-            .onTrue(superstructure.setFlywheelHardStopConfigurableControl())
-
-        controller.square()
-            .onTrue(superstructure.setIndexerConfigurableControl())
-            .onFalse(superstructure.stopIndexer())
-
-        controller.cross()
-            .onTrue(superstructure.setIntakeRollersConfigurableControl())
-            .onFalse(superstructure.stopIntakeRollers())
+        controller.leftTrigger()
+            .onTrue(superstructure.setFlywheelConfigurableControl())
+            .onFalse(superstructure.setFlywheelPresetVelocity())
 
         controller.rightBumper()
-            .onTrue(superstructure.setIntakeDeployConfigurableControl())
+            .whileTrue(superstructure.setFloorIntakeSequence())
+            .onFalse(superstructure.setIntakeIdle())
     }
 }

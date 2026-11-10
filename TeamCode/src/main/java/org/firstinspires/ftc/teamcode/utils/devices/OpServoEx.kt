@@ -29,8 +29,8 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
     private var controlMode                     : ServoControlMode = ServoControlMode.UNKNOWN
     private var timesConfigured                 : Int              = 0
     // ------- STANDARD Servo Position Mode useful variables ------ //
-    private lateinit var servo                  : ServoEx
-    private var range                           : Angle = Angle(0.0)
+     lateinit var servo                  : ServoEx
+    private var range                           : ClosedRange<Angle> = Angle(0.0)..Angle(1.0)
     private val angleLUT                        : InterpLUT = InterpLUT()
 
     // ------- CONTINUOUS ROTATION Servo Mode useful variables ------ //
@@ -53,7 +53,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
 
         val subsystemClampedLimits = MathUtils.clamp(angle.degrees, subsystemLimits.start.degrees, subsystemLimits.endInclusive.degrees)
         val servoTransformedAngle = subsystemClampedLimits * reduction
-        val servoClampedRange = servoTransformedAngle.coerceIn(range.degrees.unaryMinus(), range.degrees)
+        val servoClampedRange = servoTransformedAngle.coerceIn(range.start.degrees, range.endInclusive.degrees)
 
         val servoPosition = angleLUT.get(servoClampedRange)
 
@@ -159,7 +159,7 @@ class OpServoEx(private val hardwareMap: HardwareMap, private val servoId: Strin
             is ServoPositionModeConfiguration -> {
                 servo = ServoEx(hardwareMap, servoId)
                 servo.inverted = config.inverted
-                range = Angle.fromDegrees(config.range.endInclusive.degrees)
+                range = config.range
                 angleLUT.add(config.range.start.degrees, 0.0)
                 angleLUT.add(config.range.endInclusive.degrees, 1.0)
                 angleLUT.createLUT()
