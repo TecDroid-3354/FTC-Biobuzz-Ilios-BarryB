@@ -2,21 +2,26 @@ package org.firstinspires.ftc.teamcode.opModes.teleoperated
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
+import com.seattlesolvers.solverslib.command.CommandOpMode
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.subsystems.vision.Husky
-
-@TeleOp(name = "Husky Calibration")
-class HuskyCalibration : LinearOpMode() {
-    override fun runOpMode() {
-        val huskyCamera = Husky(hardwareMap)
+import kotlin.math.log
 
 
+@TeleOp(name = "Husky Calibration", group = "TeleOp - Blue")
 
-        while (!isStopRequested){
-            huskyCamera.log(telemetry)
 
-            telemetry.update()
-        }
+class HuskyCalibration : CommandOpMode() {
+    lateinit var huskyCamera: Husky
+    override fun initialize() {
+        huskyCamera = Husky(hardwareMap)
+    }
+
+    override fun run() {
+        super.run()
+
+        huskyCamera.log(telemetry)
+        telemetry.update()
     }
 
 
