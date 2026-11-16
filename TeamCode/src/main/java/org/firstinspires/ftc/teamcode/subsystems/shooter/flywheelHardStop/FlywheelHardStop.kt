@@ -65,7 +65,6 @@ class FlywheelHardStop(hardwareMap: HardwareMap): SubsystemBase() {
         return {
             flywheelHardStopTargetAngle = SubsystemPresetTargets.FLYWHEEL_HARD_STOP_BLOCKING_ANGLE
 
-
             flywheelHardStopServo.setServoPosition(
                 SubsystemPresetTargets.FLYWHEEL_HARD_STOP_BLOCKING_ANGLE,
                 SubsystemLimits.FLYWHEEL_HARD_STOP_LIMITS,

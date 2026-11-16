@@ -165,21 +165,23 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * Calculate the HIVE Scoring [Flywheel] target [AngularVelocity] based on the distance to its target.
+     * Calculate the HIVE Scoring [Flywheel] target [AngularVelocity] based on the distance to its target
+     * And making use of [FlywheelConstants.StoredPolynomials.scoringPolynomial].
      */
     private fun getCalculatedHiveScoringVelocity(flywheelDistanceToTarget: Distance): AngularVelocity {
         val distanceInMeters = flywheelDistanceToTarget.meters
-        val calculatedRPMs = FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
+        val calculatedRPMs = FlywheelConstants.StoredPolynomials.scoringPolynomial.getOrThrow().evaluate(distanceInMeters)
 
         return AngularVelocity.fromRpm(calculatedRPMs)
     }
 
     /**
      * Calculate the Scoring TOF [Flywheel] target [AngularVelocity] based on the distance to its target.
+     * And making use of [FlywheelConstants.StoredPolynomials.ToFPolynomial]
      */
     fun getCalculatedScoringTimeOfFlight(flywheelDistanceToTarget: Distance): Time {
         val distanceInMeters = flywheelDistanceToTarget.meters
-        val calculatedTOF = FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
+        val calculatedTOF = FlywheelConstants.StoredPolynomials.ToFPolynomial.getOrThrow().evaluate(distanceInMeters)
 
         return Time(calculatedTOF)
     }

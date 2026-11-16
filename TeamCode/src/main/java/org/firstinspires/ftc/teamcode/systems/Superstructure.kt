@@ -7,7 +7,6 @@ import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
-import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup
 import com.seattlesolvers.solverslib.command.RepeatCommand
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup
