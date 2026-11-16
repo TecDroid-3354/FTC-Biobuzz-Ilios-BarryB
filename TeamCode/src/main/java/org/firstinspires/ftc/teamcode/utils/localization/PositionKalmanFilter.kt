@@ -15,116 +15,187 @@ package org.firstinspires.ftc.teamcode.utils.localization
  * correction is applied to that snapshot and everything after it. Because F = I the correction
  * carries forward exactly, which is the same result as rewinding and replaying the odometry.
  */
-class PositionKalmanFilter(private val historySeconds: Double = 1.5) {
 
-    class Estimate(val x: Double, val y: Double, val pxx: Double, val pxy: Double, val pyy: Double)
+class PositionKalmanFilter(
+    private val historySeconds: Double = 1.5,
+    maxRateHz: Double = 700.0
+) {
+    private val cap: Int = maxOf(64, kotlin.math.ceil(historySeconds * maxRateHz).toInt())
 
-    /** [mahalanobisSq] is the squared, covariance-weighted size of the surprise. 2 degrees of freedom. */
-    class Innovation(val nx: Double, val ny: Double, val mahalanobisSq: Double)
+    private val tBuf = DoubleArray(cap)
+    private val xBuf = DoubleArray(cap)
+    private val yBuf = DoubleArray(cap)
+    private val pxxBuf = DoubleArray(cap)
+    private val pxyBuf = DoubleArray(cap)
+    private val pyyBuf = DoubleArray(cap)
 
-    private class Snapshot(
-        val t: Double,
-        var x: Double, var y: Double,
-        var pxx: Double, var pxy: Double, var pyy: Double
-    )
+    private var head = 0
+    private var count = 0
 
-    private val history = ArrayList<Snapshot>()
+    // Pre-allocated scratch fields to avoid returning Estimate/Innovation objects
+    private var estX = 0.0
+    private var estY = 0.0
+    private var estPxx = 0.0
+    private var estPxy = 0.0
+    private var estPyy = 0.0
+    var lastInnovationMahalanobisSq = 0.0
+        private set
 
-    val isInitialized: Boolean get() = history.isNotEmpty()
-    val x: Double get() = history.last().x
-    val y: Double get() = history.last().y
-    val current: Estimate get() = history.last().let { Estimate(it.x, it.y, it.pxx, it.pxy, it.pyy) }
+    // PositionKalmanFilter_2.kt
+    val isInitialized: Boolean get() = count > 0
+    val x: Double get() = if (count == 0) 0.0 else xBuf[(head + count - 1) % cap]
+    val y: Double get() = if (count == 0) 0.0 else yBuf[(head + count - 1) % cap]
 
     fun reset(t: Double, x: Double, y: Double, variance: Double) {
-        history.clear()
-        history.add(Snapshot(t, x, y, variance, 0.0, variance))
+        head = 0
+        count = 1
+        tBuf[0] = t
+        xBuf[0] = x
+        yBuf[0] = y
+        pxxBuf[0] = variance
+        pxyBuf[0] = 0.0
+        pyyBuf[0] = variance
     }
 
-    /** Moves the state by the odometry displacement and adds [addedVariance] (in^2) of uncertainty. */
+    fun clear() {
+        head = 0
+        count = 0
+        lastInnovationMahalanobisSq = 0.0
+    }
+
     fun predict(t: Double, dx: Double, dy: Double, addedVariance: Double) {
-        val last = history.last()
-        history.add(Snapshot(t, last.x + dx, last.y + dy, last.pxx + addedVariance, last.pxy, last.pyy + addedVariance))
-        while (history.size > 2 && history[1].t < t - historySeconds) history.removeAt(0)
+        if (count == cap) {
+            head = (head + 1) % cap
+            count--
+        }
+        val lastIdx = (head + count - 1) % cap
+        val newIdx = (head + count) % cap
+        tBuf[newIdx] = t
+        xBuf[newIdx] = xBuf[lastIdx] + dx
+        yBuf[newIdx] = yBuf[lastIdx] + dy
+        pxxBuf[newIdx] = pxxBuf[lastIdx] + addedVariance
+        pxyBuf[newIdx] = pxyBuf[lastIdx]
+        pyyBuf[newIdx] = pyyBuf[lastIdx] + addedVariance
+        count++
+
+        while (count > 2 && tBuf[(head + 1) % cap] < t - historySeconds) {
+            head = (head + 1) % cap
+            count--
+        }
     }
 
-    /** Adds uncertainty to the current state. Used to recover if odometry drifted outside the gate. */
     fun inflate(addedVariance: Double) {
-        val last = history.last()
-        last.pxx += addedVariance
-        last.pyy += addedVariance
+        for (i in 0 until count) {
+            val idx = (head + i) % cap
+            pxxBuf[idx] += addedVariance
+            pyyBuf[idx] += addedVariance
+        }
     }
 
-    private fun estimateAt(t: Double): Estimate? {
-        if (history.isEmpty() || t < history.first().t) return null
-        if (t >= history.last().t) return current
-        var i = 0
-        while (i + 1 < history.size && history[i + 1].t <= t) i++
-        val a = history[i]
-        val b = history[i + 1]
-        val k = (t - a.t) / (b.t - a.t)
-        fun lerp(p: Double, q: Double) = p + k * (q - p)
-        return Estimate(lerp(a.x, b.x), lerp(a.y, b.y), lerp(a.pxx, b.pxx), lerp(a.pxy, b.pxy), lerp(a.pyy, b.pyy))
+    private fun lookupEstimateAt(t: Double): Boolean {
+        if (count == 0 || t < tBuf[head]) return false
+        val lastIdx = (head + count - 1) % cap
+        if (t >= tBuf[lastIdx]) {
+            estX = xBuf[lastIdx]; estY = yBuf[lastIdx]
+            estPxx = pxxBuf[lastIdx]; estPxy = pxyBuf[lastIdx]; estPyy = pyyBuf[lastIdx]
+            return true
+        }
+        var lo = 0
+        var hi = count - 1
+        while (lo + 1 < hi) {
+            val mid = (lo + hi) ushr 1
+            if (tBuf[(head + mid) % cap] <= t) lo = mid else hi = mid
+        }
+        val idxA = (head + lo) % cap
+        val idxB = (head + hi) % cap
+        val dt = tBuf[idxB] - tBuf[idxA]
+        val k = if (dt > 1e-9) (t - tBuf[idxA]) / dt else 0.0
+        estX = xBuf[idxA] + k * (xBuf[idxB] - xBuf[idxA])
+        estY = yBuf[idxA] + k * (yBuf[idxB] - yBuf[idxA])
+        estPxx = pxxBuf[idxA] + k * (pxxBuf[idxB] - pxxBuf[idxA])
+        estPxy = pxyBuf[idxA] + k * (pxyBuf[idxB] - pxyBuf[idxA])
+        estPyy = pyyBuf[idxA] + k * (pyyBuf[idxB] - pyyBuf[idxA])
+        return true
     }
 
-    /** How surprising would this measurement be? Does not change the filter. Null if [captureT] is outside the history. */
-    fun innovation(captureT: Double, zx: Double, zy: Double, rxx: Double, rxy: Double, ryy: Double): Innovation? {
-        val e = estimateAt(captureT) ?: return null
-        val sxx = e.pxx + rxx
-        val sxy = e.pxy + rxy
-        val syy = e.pyy + ryy
+    fun computeInnovationSq(captureT: Double, zx: Double, zy: Double, rxx: Double, rxy: Double, ryy: Double): Double {
+        if (!lookupEstimateAt(captureT)) return Double.NaN
+        val sxx = estPxx + rxx
+        val sxy = estPxy + rxy
+        val syy = estPyy + ryy
         val det = sxx * syy - sxy * sxy
-        if (det < 1e-12) return null
-        val nx = zx - e.x
-        val ny = zy - e.y
-        val d2 = (nx * (syy * nx - sxy * ny) + ny * (-sxy * nx + sxx * ny)) / det
-        return Innovation(nx, ny, d2)
+        if (!(det > 1e-12)) return Double.NaN
+        val nx = zx - estX
+        val ny = zy - estY
+        lastInnovationMahalanobisSq = (nx * (syy * nx - sxy * ny) + ny * (-sxy * nx + sxx * ny)) / det
+        return lastInnovationMahalanobisSq
     }
 
     /** Fuses a position measurement taken at [captureT]. Returns false if it could not be applied. */
     fun correct(captureT: Double, zx: Double, zy: Double, rxx: Double, rxy: Double, ryy: Double): Boolean {
-        val cap = estimateAt(captureT) ?: return false
-        val sxx = cap.pxx + rxx
-        val sxy = cap.pxy + rxy
-        val syy = cap.pyy + ryy
+        if (!lookupEstimateAt(captureT)) return false
+        val sxx = estPxx + rxx
+        val sxy = estPxy + rxy
+        val syy = estPyy + ryy
         val det = sxx * syy - sxy * sxy
-        if (det < 1e-12) return false
+        if (!(det > 1e-12)) return false
 
         // S^-1
         val ixx = syy / det
         val ixy = -sxy / det
         val iyy = sxx / det
+
         // K = Pcap * S^-1
-        val kxx = cap.pxx * ixx + cap.pxy * ixy
-        val kxy = cap.pxx * ixy + cap.pxy * iyy
-        val kyx = cap.pxy * ixx + cap.pyy * ixy
-        val kyy = cap.pxy * ixy + cap.pyy * iyy
-        val nx = zx - cap.x
-        val ny = zy - cap.y
+        val kxx = estPxx * ixx + estPxy * ixy
+        val kxy = estPxx * ixy + estPxy * iyy
+        val kyx = estPxy * ixx + estPyy * ixy
+        val kyy = estPxy * ixy + estPyy * iyy
+
+        val nx = zx - estX
+        val ny = zy - estY
         val cx = kxx * nx + kxy * ny
         val cy = kyx * nx + kyy * ny
-        // K * Pcap  (symmetric)
-        val kpxx = kxx * cap.pxx + kxy * cap.pxy
-        val kpxy = kxx * cap.pxy + kxy * cap.pyy
-        val kpyy = kyx * cap.pxy + kyy * cap.pyy
 
-        // Shift every snapshot after the capture time. Their covariance is Pcap + (process noise since),
-        // so removing K*Pcap is exact for this F = I model.
-        var insertAt = history.size
-        for (i in history.indices) {
-            val s = history[i]
-            if (s.t > captureT) {
-                if (insertAt == history.size) insertAt = i
-                s.x += cx; s.y += cy
-                s.pxx -= kpxx; s.pxy -= kpxy; s.pyy -= kpyy
+        // K * Pcap (symmetric)
+        val kpxx = kxx * estPxx + kxy * estPxy
+        val kpxy = kxx * estPxy + kxy * estPyy
+        val kpyy = kyx * estPxy + kyy * estPyy
+
+        // Shift every snapshot after captureT forward by the correction
+        var insertPos = -1
+        for (i in 0 until count) {
+            val idx = (head + i) % cap
+            if (tBuf[idx] > captureT) {
+                if (insertPos == -1) insertPos = i
+                xBuf[idx] += cx; yBuf[idx] += cy
+                pxxBuf[idx] -= kpxx; pxyBuf[idx] -= kpxy; pyyBuf[idx] -= kpyy
             }
         }
-        if (insertAt == history.size) {
-            // Capture time is at or after the newest snapshot: the correction lands on the current state.
-            val last = history.last()
-            last.x += cx; last.y += cy
-            last.pxx -= kpxx; last.pxy -= kpxy; last.pyy -= kpyy
+
+        if (insertPos == -1) {
+            // Capture time is at or after the newest snapshot: apply directly to the current state
+            val lastIdx = (head + count - 1) % cap
+            xBuf[lastIdx] += cx; yBuf[lastIdx] += cy
+            pxxBuf[lastIdx] -= kpxx; pxyBuf[lastIdx] -= kpxy; pyyBuf[lastIdx] -= kpyy
         } else {
-            history.add(insertAt, Snapshot(captureT, cap.x + cx, cap.y + cy, cap.pxx - kpxx, cap.pxy - kpxy, cap.pyy - kpyy))
+            // Insert the corrected snapshot at captureT so multi-tag frames see the updated state
+            if (count == cap) {
+                head = (head + 1) % cap
+                count--
+                insertPos = (insertPos - 1).coerceAtLeast(0)
+            }
+            for (i in count downTo insertPos + 1) {
+                val dst = (head + i) % cap
+                val src = (head + i - 1) % cap
+                tBuf[dst] = tBuf[src]
+                xBuf[dst] = xBuf[src]; yBuf[dst] = yBuf[src]
+                pxxBuf[dst] = pxxBuf[src]; pxyBuf[dst] = pxyBuf[src]; pyyBuf[dst] = pyyBuf[src]
+            }
+            val insIdx = (head + insertPos) % cap
+            tBuf[insIdx] = captureT
+            xBuf[insIdx] = estX + cx; yBuf[insIdx] = estY + cy
+            pxxBuf[insIdx] = estPxx - kpxx; pxyBuf[insIdx] = estPxy - kpxy; pyyBuf[insIdx] = estPyy - kpyy
+            count++
         }
         return true
     }

@@ -12,10 +12,16 @@ import com.seattlesolvers.solverslib.command.Robot
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 
-abstract class TecDroidRobot(private val hardwareMap: HardwareMap): Robot() {
-    val pTelemetry: TelemetryManager    = PanelsTelemetry.telemetry
+abstract class TecDroidRobot(hardwareMap: HardwareMap): Robot() {
+    val pTelemetry: TelemetryManager = PanelsTelemetry.telemetry
+    private val allHubs: List<LynxModule> = hardwareMap.getAll(LynxModule::class.java)
 
-    init { initBulkReadings(); OpMotorEx.clearRegistry(); OpServoEx.clearRegistry() }
+    init {
+        initBulkReadings()
+        OpMotorEx.clearRegistry()
+        OpServoEx.clearRegistry()
+        pTelemetry.setUpdateInterval(50)
+    }
     abstract fun preAuto(command: Command)
     abstract fun initAuto(startingPose: Pose)
     abstract fun initLoop()
@@ -26,7 +32,19 @@ abstract class TecDroidRobot(private val hardwareMap: HardwareMap): Robot() {
     abstract fun printTelemetry(telemetryManager: TelemetryManager)
     abstract fun followPathCMD(path: Path, holdEnd: Boolean, maxPower: Double): Command
     abstract fun configureBindings()
-    private fun initBulkReadings() { super.setBulkReading(hardwareMap, LynxModule.BulkCachingMode.MANUAL) }
+    private fun initBulkReadings() {
+        for (hub in allHubs) {
+            hub.bulkCachingMode = LynxModule.BulkCachingMode.MANUAL
+        }
+    }
 
-    override fun run() { CommandScheduler.getInstance().run(); OpMotorEx.updateAll(); OpServoEx.updateAll(); loop() }
+    override fun run() {
+        for (hub in allHubs) {
+            hub.clearBulkCache()
+        }
+        CommandScheduler.getInstance().run()
+        OpMotorEx.updateAll()
+        OpServoEx.updateAll()
+        loop()
+    }
 }

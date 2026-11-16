@@ -3,8 +3,6 @@ package org.firstinspires.ftc.teamcode.subsystems.turret
 import com.bylazar.telemetry.TelemetryManager
 import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.HardwareMap
-import com.qualcomm.robotcore.hardware.PIDCoefficients
-import com.qualcomm.robotcore.hardware.PIDFCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
@@ -13,15 +11,11 @@ import com.seattlesolvers.solverslib.util.Debouncer
 import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeDegrees
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
-import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
-import org.firstinspires.ftc.teamcode.subsystems.indexer.IndexerConstants
-import org.firstinspires.ftc.teamcode.utils.devices.RTPServo.Direction
-import java.util.Formatter
 import java.util.function.Supplier
 import kotlin.math.abs
 
@@ -33,9 +27,12 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     private lateinit var turretEncoder      : AnalogInput
 
-    private var turretTargetAngle: Angle = Angle(0.0)
+    private var turretTargetAngle: Angle = Angle()
 
-    private var configurableTurretAngle: Angle = Angle(0.0)
+    /** Avoids adding loop time */
+    private var turretAngle: Angle = Angle()
+
+    private var configurableTurretAngle: Angle = Angle()
 
     private val atTargetDebouncer: Debouncer = Debouncer(0.06, Debouncer.DebounceType.Both)
 
@@ -48,9 +45,18 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /** Runs every cycle */
     override fun periodic() {
+        turretAngle = readEncoderAngle()
+
         if (configurableTurretAngle.degrees.equals(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES).not()) {
             updateTurretConfigurableAngle(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)
         }
+    }
+
+    private fun Angle.correctTurretZero(): Angle {
+        val bumpedAngle = this.plus(Angle.fromRadians(Math.PI))
+        val normalizedAngle = normalizeDegrees(bumpedAngle.degrees)
+
+        return Angle.fromDegrees(normalizedAngle)
     }
 
     /**
@@ -66,11 +72,11 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
      */
     fun setTurretZeroAngle(): Runnable {
         return {
-            turretTargetAngle = SubsystemPresetTargets.TURRET_ZERO_ANGLE
+            turretTargetAngle = SubsystemPresetTargets.TURRET_HOME_ANGLE
 
-            rightTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_ZERO_ANGLE,
+            rightTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_HOME_ANGLE.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
-            leftTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_ZERO_ANGLE,
+            leftTurretServo.setServoPosition(SubsystemPresetTargets.TURRET_HOME_ANGLE.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
         }
     }
@@ -85,9 +91,9 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
                 SubsystemLimits.TURRET_ANGLE_LIMITS.endInclusive.degrees)
             turretTargetAngle = Angle.fromDegrees(clampedAngleDeg)
 
-            rightTurretServo.setServoPosition(configurableTurretAngle,
+            rightTurretServo.setServoPosition(configurableTurretAngle.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
-            leftTurretServo.setServoPosition(configurableTurretAngle,
+            leftTurretServo.setServoPosition(configurableTurretAngle.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
         }
     }
@@ -102,9 +108,9 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
                 SubsystemLimits.TURRET_ANGLE_LIMITS.endInclusive.degrees)
             turretTargetAngle = Angle.fromDegrees(clampedAngleDeg)
 
-            rightTurretServo.setServoPosition(turretCalculatedAngle,
+            rightTurretServo.setServoPosition(turretCalculatedAngle.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
-            leftTurretServo.setServoPosition(turretCalculatedAngle,
+            leftTurretServo.setServoPosition(turretCalculatedAngle.correctTurretZero(),
                 SubsystemLimits.TURRET_ANGLE_LIMITS, TurretConstants.Mechanical.GEAR_RATIO)
         }
     }
@@ -132,7 +138,7 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
      */
     fun getIsAtTarget(): Boolean {
         val withinTolerance = abs(
-            (turretTargetAngle.minus(getServoAbsoluteAngle())).degrees
+            (turretTargetAngle.minus(getTurretAbsoluteAngle())).degrees
         ) < SubsystemTolerances.TURRET_ANGLE_TOLERANCE.degrees
 
         return atTargetDebouncer.calculate(withinTolerance)
@@ -141,21 +147,19 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     /**
      * Gets the absolute position of the servo, not considering gear ratios
      */
-    private fun getServoAbsoluteAngle(): Angle {
-        val currentAngle = Angle.fromDegrees(
-            (turretEncoder.voltage / TurretConstants.Configuration.ABSOLUTE_MAX_VOLTAGE.volts) * (if (TurretConstants.Configuration.LEFT_INVERTED) -360 else 360)
-        )
-        val transformedAngle = Angle.fromDegrees(
-            (currentAngle.degrees - TurretConstants.Mechanical.TURRET_ENCODER_ANGLE_OFFSET.degrees)
-        )
+    fun getTurretAbsoluteAngle(): Angle { return turretAngle }
 
-        return Angle.fromDegrees(normalizeDegrees(transformedAngle.degrees))
+    private fun readEncoderAngle(): Angle {
+        val currentAngle = (turretEncoder.voltage / TurretConstants.Configuration.ABSOLUTE_MAX_VOLTAGE.volts) *
+                (if (TurretConstants.Configuration.LEFT_INVERTED) -360.0 else 360.0)
+        val transformedAngle = currentAngle - TurretConstants.Mechanical.TURRET_ENCODER_ANGLE_OFFSET.degrees
+        return Angle.fromDegrees(normalizeDegrees(transformedAngle))
     }
 
     // Log useful values
     fun log(telemetry: TelemetryManager) {
         telemetry.addLine("Turret")
-        telemetry.addData("Turret Angle Degrees", getServoAbsoluteAngle().degrees * TurretConstants.Mechanical.GEAR_RATIO)
+        telemetry.addData("Turret Angle Degrees", getTurretAbsoluteAngle().degrees * TurretConstants.Mechanical.GEAR_RATIO)
         telemetry.addData("Turret Target Angle Degrees", turretTargetAngle.degrees)
         telemetry.addData("Turret at target", getIsAtTarget())
     }

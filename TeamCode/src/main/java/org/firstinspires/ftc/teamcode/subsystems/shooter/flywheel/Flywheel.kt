@@ -21,22 +21,24 @@ import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.Time
 import java.util.function.Supplier
-import kotlin.collections.iterator
 import kotlin.math.abs
 
 class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     private lateinit var flywheelMotor: OpMotorEx
 
-    private var flywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+    private var flywheelTargetVelocity: AngularVelocity = AngularVelocity()
 
-    private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+    private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity()
 
     private val atTargetDebouncer: Debouncer = Debouncer(0.06, Debouncer.DebounceType.Both)
 
     init {
         // Initialization code
         configureMotors()
+
+        setDeceleratingPID().run()
+        //setFlywheelIdleVelocity().run()
     }
 
     /** Runs every cycle */
@@ -73,14 +75,26 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_PRESET_RPM] value.
+     * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_IDLE_RPM] value.
      * @return an [Runnable] which enables the flywheel at the given velocity.
      */
-    fun setFlywheelPresetVelocity(): Runnable {
+    fun setFlywheelIdleVelocity(): Runnable {
         return {
-            flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_PRESET_RPM
+            flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_RPM
 
-            flywheelMotor.setVelocity(SubsystemPresetTargets.FLYWHEEL_PRESET_RPM)
+            flywheelMotor.setVelocity(SubsystemPresetTargets.FLYWHEEL_IDLE_RPM)
+        }
+    }
+
+    /**
+     * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM] value.
+     * @return an [Runnable] which enables the flywheel at the given velocity.
+     */
+    fun setFlywheelPresetShootingVelocity(): Runnable {
+        return {
+            flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM
+
+            flywheelMotor.setVelocity(SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM)
         }
     }
 
@@ -132,6 +146,22 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
             flywheelTargetVelocity = AngularVelocity(0.0)
             flywheelMotor.stopMotor()
         }, this)
+    }
+
+    fun setAcceleratingPID(): Runnable {
+        return {
+            updateFlywheelMotorControlGains(
+                SubsystemControlGains.FLYWHEEL_MOTOR_PID,
+                SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
+        }
+    }
+
+    fun setDeceleratingPID(): Runnable {
+        return {
+            updateFlywheelMotorControlGains(
+                SubsystemControlGains.SLOWING_FLYWHEEL_MOTOR_PID,
+                SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup
 import com.seattlesolvers.solverslib.command.RepeatCommand
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup
@@ -21,6 +22,7 @@ import org.firstinspires.ftc.teamcode.autonomous.pedroPathing.Constants
 import org.firstinspires.ftc.teamcode.constants.DriveMultipliers
 import org.firstinspires.ftc.teamcode.constants.FieldDimensions
 import org.firstinspires.ftc.teamcode.constants.FieldTargets
+import org.firstinspires.ftc.teamcode.constants.LocalizationConstants
 import org.firstinspires.ftc.teamcode.constants.RobotDimensions
 import org.firstinspires.ftc.teamcode.constants.RobotTransformations
 import org.firstinspires.ftc.teamcode.constants.ScoringTargets
@@ -94,11 +96,11 @@ class Superstructure(
         //Turret Initialization
         turret = Turret(hardwareMap)
         // Pose Estimator Intialization
-//        poseEstimator = PoseEstimator(
-//            LocalizationConstants.mount, LocalizationConstants.tagMap, LocalizationConstants.estimatorConfig
-//        )
+        poseEstimator = PoseEstimator(
+            LocalizationConstants.mount, LocalizationConstants.biobuzzAprilTagDynamicMap, LocalizationConstants.estimatorConfig
+        )
         // Mecanum Initialization
-        mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getAngle() }
+        mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getServoAbsoluteAngle() }
         // Intake deploy Initialization
 
         // Intake Rollers Initialization
@@ -112,34 +114,39 @@ class Superstructure(
         // Flywheel hard stop initialization
         flywheelHardStop = FlywheelHardStop(hardwareMap)
         // Limelight initialization
-        limelight = Limelight(hardwareMap, mecanum)
+        limelight = Limelight(hardwareMap, mecanum, mecanum.isFilterDisabled)
     }
 
     override fun periodic() {
+        val currentPose = mecanum.getPose()
+        val poseX = currentPose.x()
+        val poseY = currentPose.y()
+        val poseHeading = currentPose.heading()
+
         // Updates robot zone position
-        robotZone.setPosition(mecanum.getPose().x(), mecanum.getPose().y())
-        robotZone.rotation = mecanum.getRotation().radians
+        robotZone.setPosition(poseX, poseY)
+        robotZone.rotation = poseHeading
 
         // Updates the robot to turret pose by retrieving the Mecanum's pose and transforming it by the Turret Transform2d
-        robotToTurretPose = mecanum.getPose().toPose2d().transformBy(RobotTransformations.ROBOT_TO_TURRET_2D)
+        robotToTurretPose = currentPose.toPose2d().transformBy(RobotTransformations.ROBOT_TO_TURRET_2D)
+
+        scoringTarget = when (alliance) {
+            Alliance.RED -> getRedScoringTarget()
+            Alliance.BLUE -> getBlueScoringTarget()
+        }
+        val targetX = scoringTarget.x()
+        val targetY = scoringTarget.y()
 
         // Updates the Turret's distance to the current scoring target.
         turretDistanceToTarget = Distance.fromMeters(
-            hypot(
-                getScoringTarget().get().x().minus(robotToTurretPose.x),
-                getScoringTarget().get().y().minus(robotToTurretPose.y)
-            )
+            hypot(targetX.minus(robotToTurretPose.x), targetY.minus(robotToTurretPose.y))
         )
 
         // Updates the robot's radial velocity to the current scoring target
-        robotRadialVelocityToTarget = mecanum.getRobotRadialVelocity(
-            getScoringTarget().get().toTranslation2d()
-        )
+        robotRadialVelocityToTarget = mecanum.getRobotRadialVelocity(targetX, targetY, robotToTurretPose)
 
         // Updates the robot's tangential velocity to the current scoring target
-        robotTangentialVelocityToTarget = mecanum.getRobotTangentialVelocity(
-            getScoringTarget().get().toTranslation2d()
-        )
+        robotTangentialVelocityToTarget = mecanum.getRobotTangentialVelocity(targetX, targetY, robotToTurretPose)
     }
     // --------------- ----- -------- --------------- //
     // ------------ CONTROLLER COMMANDS ------------- //
@@ -218,16 +225,7 @@ class Superstructure(
     }
 
     /** Based on the robot's position on the field (left/right side) returns the current scoring target. */
-    private fun getScoringTarget(): Supplier<Pose> {
-        return Supplier {
-            scoringTarget = when (alliance) {
-                Alliance.RED -> getRedScoringTarget()
-                Alliance.BLUE -> getBlueScoringTarget()
-            }
-
-            scoringTarget
-        }
-    }
+    private fun getScoringTarget(): Supplier<Pose> = Supplier { scoringTarget }
 
     private fun getRedScoringTarget(): Pose {
         return if (robotZone.position.x > FieldDimensions.RED_HIVE_CENTER_REFERENCE.x) {
@@ -314,7 +312,7 @@ class Superstructure(
     fun setPresetScoringSequence(): Command {
         return setIndexerReversedPreset().alongWith(setIntakeRollersReversedVelocity()).andThen(
             ParallelCommandGroup(
-                setFlywheelPresetVelocity(),
+                setDynamicFlywheelPresetShootingVelocity(),
                 setHoodPresetAngle(),
                 WaitCommand(600).andThen(stopIntakeRollers().alongWith(stopIndexer()))
                     .andThen(WaitUntilCommand { isFlywheelAtTarget() })
@@ -333,7 +331,7 @@ class Superstructure(
      */
     fun stopShootingSequence(): Command {
         return ParallelCommandGroup(
-            stopFlywheel(),
+            setDynamicFlywheelIdleVelocity(),
             setHoodHomeAngle(),
             stopIndexer(),
             blockPathToFlywheel(),
@@ -387,7 +385,7 @@ class Superstructure(
             {
                 mecanum.getAngleFromSubsystemToTarget(
                     scoringTarget.toTranslation2d(), robotToTurretPose.translation,
-                ).plus(Rotation2d(Math.PI))/*.minus(getTurretYawCorrection(
+                )/*.minus(getTurretYawCorrection(
                     getVirtualDistance(turretDistanceToTarget)
                 ))*/
             }, { mecanum.getRotation() },
@@ -535,14 +533,42 @@ class Superstructure(
         return flywheel.setFlywheelConfigurableVelocity().InstantCommand(flywheel)
     }
 
+    fun setDynamicFlywheelConfigurableVelocity(): Command {
+        return setFlywheelAccelerationGains().andThen(setFlywheelConfigurableControl())
+    }
+
     /** Enables the [Flywheel] with a calculated velocity based on the virtual distance and the robot's radial velocity */
-    fun setFlywheelPresetVelocity(): Command {
-        return flywheel.setFlywheelPresetVelocity().InstantCommand(flywheel)
+    fun setFlywheelIdleVelocity(): Command {
+        return flywheel.setFlywheelIdleVelocity().InstantCommand(flywheel)
+    }
+
+    fun setDynamicFlywheelIdleVelocity(): Command {
+        return setFlywheelDecelerationGains().andThen(setFlywheelIdleVelocity())
+    }
+
+    fun setFlywheelPresetShootingVelocity(): Command {
+        return flywheel.setFlywheelPresetShootingVelocity().InstantCommand(flywheel)
+    }
+
+    fun setDynamicFlywheelPresetShootingVelocity(): Command {
+        return setFlywheelAccelerationGains().andThen(setFlywheelPresetShootingVelocity())
     }
 
     /** Enables the [Flywheel] with a calculated velocity based on the virtual distance and the robot's radial velocity */
     fun setFlywheelCalculatedVelocity(): Command {
         return flywheel.setFlywheelCalculatedScoringVelocity { getVirtualDistance(turretDistanceToTarget) }
+    }
+
+    fun setDynamicCalculatedVelocity(): Command {
+        return setFlywheelAccelerationGains().andThen(setFlywheelCalculatedVelocity())
+    }
+
+    fun setFlywheelDecelerationGains(): Command {
+        return flywheel.setDeceleratingPID().InstantCommand(flywheel)
+    }
+
+    fun setFlywheelAccelerationGains(): Command {
+        return flywheel.setAcceleratingPID().InstantCommand(flywheel)
     }
 
     /** Stops the [Flywheel] */
@@ -700,14 +726,19 @@ class Superstructure(
         turret.log(telemetryM)
     }
 
+    // Superstructure_2.kt
     fun logOdometry() {
+        val pose = mecanum.getPose()
         telemetryM.addLine("Odometry")
-        telemetryM.addData("Fused", mecanum.getPose())
-        //telemetryM.addData("Stats", poseEstimator.stats)
-        telemetryM.addData("Target", scoringTarget)
-
+        telemetryM.addData("Fused X", pose.x())
+        telemetryM.addData("Fused Y", pose.y())
+        telemetryM.addData("Heading Deg", Math.toDegrees(pose.heading()))
+        telemetryM.addData("Target X", scoringTarget.x())
+        telemetryM.addData("Target Y", scoringTarget.y())
+        telemetryM.addData("Accepted Tags", poseEstimator.stats.acceptedTags)
+        telemetryM.addData("Gated Tags", poseEstimator.stats.gatedTags)
         telemetryM.addData("Radial Velocity", robotRadialVelocityToTarget.mps)
         telemetryM.addData("Tangential Velocity", robotTangentialVelocityToTarget.mps)
-        telemetryM.addData("Tangential Velocity", turretDistanceToTarget.meters)
+        telemetryM.addData("Distance to target", turretDistanceToTarget.meters)
     }
 }

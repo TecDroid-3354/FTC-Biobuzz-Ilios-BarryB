@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode.utils.localization
 
 import org.firstinspires.ftc.teamcode.systems.TurretCameraMount
-import org.firstinspires.ftc.teamcode.utils.units.Vec2
-import org.firstinspires.ftc.teamcode.utils.units.Vec3
 import org.firstinspires.ftc.teamcode.utils.units.wrapRadians
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -89,13 +87,27 @@ class TagDiagnostic(
 class PoseEstimator(
     private val mount: TurretCameraMount,
     private val tagMap: AprilTagMap,
-    private val config: EstimatorConfig = EstimatorConfig()
+    private val config: EstimatorConfig = EstimatorConfig(),
+    maxLoopHz: Double = 600.0
 ) {
-    private val filter = PositionKalmanFilter(config.historySeconds)
-    val stats = EstimatorStats()
+    private companion object { const val YAW_HALF_WINDOW = 0.03 }
 
-    private class Sample(val t: Double, val heading: Double, val turret: Double)
-    private val samples = ArrayList<Sample>()
+    private val sampleCap: Int = maxOf(64, kotlin.math.ceil(config.historySeconds * maxLoopHz).toInt())
+    private val filter = PositionKalmanFilter(config.historySeconds, maxLoopHz + 100.0)
+
+    private val sampleT = DoubleArray(sampleCap)
+    private val sampleHeading = DoubleArray(sampleCap)
+    private val sampleTurret = DoubleArray(sampleCap)
+    val stats = EstimatorStats()
+    private var sampleHead = 0
+    private var sampleCount = 0
+
+    // Scratch outputs for sample lookup & solve
+    private var lookedUpHeading = 0.0
+    private var lookedUpTurret = 0.0
+    private var solvedRobotX = 0.0
+    private var solvedRobotY = 0.0
+    private var solvedImpliedHeight = 0.0
 
     private var hasOdometry = false
     private var lastX = 0.0
@@ -103,23 +115,37 @@ class PoseEstimator(
     private var lastHeading = 0.0
     private var lastT = 0.0
     private var consecutiveGated = 0
-    private val beliefs = HashMap<String, Double>()
+    private val groupIndex = HashMap<String, Int>()
+    private var beliefArr = DoubleArray(8)
 
-    /** Positive: the structure is believed to be at its +rest angle (candidate 0). Negative: -rest angle. 0 = unknown. */
-    fun groupBelief(group: String): Double = beliefs[group] ?: 0.0
-
-    val x: Double get() = filter.x
-    val y: Double get() = filter.y
-    val isInitialized: Boolean get() = filter.isInitialized
-
-    /** Call whenever the follower's pose is set by hand (start of an OpMode, manual relocalization). */
-    fun resetPose() {
-        hasOdometry = false
-        samples.clear()
-        consecutiveGated = 0
+    private fun beliefSlot(group: String): Int {
+        var i = groupIndex[group]
+        if (i == null) {
+            i = groupIndex.size
+            groupIndex[group] = i
+            if (i >= beliefArr.size) beliefArr = beliefArr.copyOf(beliefArr.size * 2)
+        }
+        return i
     }
 
-    /** Call once per loop with the follower's odometry pose (FIELD frame) and the MEASURED turret angle. */
+    fun groupBelief(group: String): Double = groupIndex[group]?.let { beliefArr[it] } ?: 0.0
+
+    val x: Double @Synchronized get() = filter.x
+    val y: Double @Synchronized get() = filter.y
+    val isInitialized: Boolean @Synchronized get() = filter.isInitialized
+
+    @Synchronized
+    fun resetPose() {
+        hasOdometry = false
+        sampleHead = 0
+        sampleCount = 0
+        consecutiveGated = 0
+        filter.clear()
+        stats.lastMahalanobisSq = 0.0
+        stats.lastHypothesisIndex = -1
+    }
+
+    @Synchronized
     fun updateOdometry(t: Double, odoX: Double, odoY: Double, odoHeading: Double, turretAngle: Double) {
         if (!hasOdometry) {
             filter.reset(t, odoX, odoY, config.initialVariance)
@@ -132,142 +158,234 @@ class PoseEstimator(
                     config.odometryVariancePerSecond * (t - lastT)
             filter.predict(t, dx, dy, q)
         }
-        samples.add(Sample(t, odoHeading, turretAngle))
-        while (samples.size > 2 && samples[1].t < t - config.historySeconds) samples.removeAt(0)
+
+        if (sampleCount == sampleCap) {
+            sampleHead = (sampleHead + 1) % sampleCap
+            sampleCount--
+        }
+        val newIdx = (sampleHead + sampleCount) % sampleCap
+        sampleT[newIdx] = t
+        sampleHeading[newIdx] = odoHeading
+        sampleTurret[newIdx] = turretAngle
+        sampleCount++
+
+        while (sampleCount > 2 && sampleT[(sampleHead + 1) % sampleCap] < t - config.historySeconds) {
+            sampleHead = (sampleHead + 1) % sampleCap
+            sampleCount--
+        }
         lastX = odoX; lastY = odoY; lastHeading = odoHeading; lastT = t
     }
 
-    private fun headingAt(t: Double): Pair<Double, Double>? {
-        if (samples.isEmpty() || t < samples.first().t) return null
-        if (t >= samples.last().t) return samples.last().let { Pair(it.heading, it.turret) }
-        var i = 0
-        while (i + 1 < samples.size && samples[i + 1].t <= t) i++
-        val a = samples[i]
-        val b = samples[i + 1]
-        val k = (t - a.t) / (b.t - a.t)
-        return Pair(a.heading + k * wrapRadians(b.heading - a.heading), a.turret + k * wrapRadians(b.turret - a.turret))
+    private fun interpolateAt(t: Double): Boolean {
+        if (sampleCount == 0 || t < sampleT[sampleHead]) return false
+        val lastIdx = (sampleHead + sampleCount - 1) % sampleCap
+        if (t >= sampleT[lastIdx]) {
+            lookedUpHeading = sampleHeading[lastIdx]; lookedUpTurret = sampleTurret[lastIdx]
+            return true
+        }
+        var lo = 0; var hi = sampleCount - 1
+        while (lo + 1 < hi) {
+            val mid = (lo + hi) ushr 1
+            if (sampleT[(sampleHead + mid) % sampleCap] <= t) lo = mid else hi = mid
+        }
+        val a = (sampleHead + lo) % sampleCap
+        val b = (sampleHead + hi) % sampleCap
+        val dt = sampleT[b] - sampleT[a]
+        val k = if (dt > 1e-9) (t - sampleT[a]) / dt else 0.0
+        lookedUpHeading = sampleHeading[a] + k * wrapRadians(sampleHeading[b] - sampleHeading[a])
+        lookedUpTurret  = sampleTurret[a]  + k * wrapRadians(sampleTurret[b]  - sampleTurret[a])
+        return true
     }
 
     private fun cameraYawRate(t: Double): Double {
-        val a = headingAt(t - 0.03) ?: return 0.0
-        val b = headingAt(t + 0.03) ?: return 0.0
-        val ya = mount.cameraYawInField(a.first, a.second)
-        val yb = mount.cameraYawInField(b.first, b.second)
-        return wrapRadians(yb - ya) / 0.06
+        if (!interpolateAt(t - YAW_HALF_WINDOW)) return 0.0
+        val ya = mount.cameraYawInField(lookedUpHeading, lookedUpTurret)
+        interpolateAt(t + YAW_HALF_WINDOW)
+        val yb = mount.cameraYawInField(lookedUpHeading, lookedUpTurret)
+        return wrapRadians(yb - ya) / (2.0 * YAW_HALF_WINDOW)
     }
 
-    private class Candidate(val index: Int, val robot: Vec2, val score: Double, val mahalanobisSq: Double)
-
-    private class Solved(val robot: Vec2, val impliedCameraHeight: Double)
-
-    private fun solve(tag: TagObservation, placement: Vec3, heading: Double, turret: Double): Solved {
-        val leveled = mount.levelize(tag.right, tag.down, tag.out)
-        val toTagField = Vec2(leveled.x, leveled.y).rotated(mount.cameraYawInField(heading, turret))
-        val cameraField = Vec2(placement.x, placement.y) - toTagField
-        return Solved(mount.robotPositionFromCamera(cameraField, heading, turret), placement.z - leveled.z)
+    private fun solveScalar(
+        leveledX: Double, leveledY: Double, leveledZ: Double,
+        placeX: Double, placeY: Double, placeZ: Double,
+        cosCamYaw: Double, sinCamYaw: Double,
+        cosHead: Double, sinHead: Double,
+        camOffsetX: Double, camOffsetY: Double
+    ) {
+        val toTagFieldX = leveledX * cosCamYaw - leveledY * sinCamYaw
+        val toTagFieldY = leveledX * sinCamYaw + leveledY * cosCamYaw
+        val camFieldX = placeX - toTagFieldX
+        val camFieldY = placeY - toTagFieldY
+        solvedRobotX = camFieldX - (camOffsetX * cosHead - camOffsetY * sinHead)
+        solvedRobotY = camFieldY - (camOffsetX * sinHead + camOffsetY * cosHead)
+        solvedImpliedHeight = placeZ - leveledZ
     }
 
-    /**
-     * Bench check. With the robot standing at a position you measured by hand, shows what every tag implies under
-     * every candidate placement. The right candidate should land within a couple of inches and ~0 height residual.
-     * A wrong tag layout, wrong axes, wrong tag size or wrong mount numbers show up here as errors of tens of inches.
-     */
+    @Synchronized
     fun diagnose(
         tags: List<TagObservation>, knownX: Double, knownY: Double, heading: Double, turret: Double
     ): List<TagDiagnostic> {
         val out = ArrayList<TagDiagnostic>()
+        val cameraYaw = mount.cameraYawInField(heading, turret)
+        val cosCamYaw = cos(cameraYaw)
+        val sinCamYaw = sin(cameraYaw)
+        val cosHead = cos(heading)
+        val sinHead = sin(heading)
+        val cosTurret = cos(turret)
+        val sinTurret = sin(turret)
+        val camOffsetX = mount.pivotInRobot.x + (mount.cameraInTurret.x * cosTurret - mount.cameraInTurret.y * sinTurret)
+        val camOffsetY = mount.pivotInRobot.y + (mount.cameraInTurret.x * sinTurret + mount.cameraInTurret.y * cosTurret)
+        val cp = cos(mount.cameraPitchUp)
+        val sp = sin(mount.cameraPitchUp)
+
         for (tag in tags) {
+            val leveledX = tag.out * cp + tag.down * sp
+            val leveledY = -tag.right
+            val leveledZ = tag.out * sp - tag.down * cp
+
             for ((index, placement) in tagMap.candidates(tag.id).withIndex()) {
-                val r = solve(tag, placement, heading, turret)
-                out.add(TagDiagnostic(tag.id, index, r.robot.x, r.robot.y,
-                    hypot(r.robot.x - knownX, r.robot.y - knownY), r.impliedCameraHeight - mount.cameraHeight))
+                solveScalar(
+                    leveledX, leveledY, leveledZ,
+                    placement.x, placement.y, placement.z,
+                    cosCamYaw, sinCamYaw, cosHead, sinHead,
+                    camOffsetX, camOffsetY
+                )
+                out.add(
+                    TagDiagnostic(
+                        id = tag.id,
+                        candidateIndex = index,
+                        robotX = solvedRobotX,
+                        robotY = solvedRobotY,
+                        errorInches = hypot(solvedRobotX - knownX, solvedRobotY - knownY),
+                        heightResidualInches = solvedImpliedHeight - mount.cameraHeight
+                )
+                )
             }
         }
         return out
     }
 
-    /** Fuses every usable tag in [frame]. Returns how many tags were accepted. */
+    @Synchronized
     fun addVisionFrame(frame: VisionFrame): Int {
         if (!filter.isInitialized) return 0
         val t = frame.captureTimeSeconds
-        val (heading, turret) = headingAt(t) ?: return 0
+        if (!interpolateAt(t)) return 0
+        val heading = lookedUpHeading
+        val turret = lookedUpTurret
+        val yawRate = cameraYawRate(t)
 
-        val usable = frame.tags.filter { tag ->
+        var usableCount = 0
+        for (i in frame.tags.indices) {
+            val tag = frame.tags[i]
             val range = hypot(tag.out, tag.right)
-            when {
-                tagMap.candidates(tag.id).isEmpty() -> { stats.unmappedTags++; false }
-                range < config.minRange || range > config.maxRange -> { stats.outOfRangeTags++; false }
-                else -> true
+            if (tagMap.candidates(tag.id).isEmpty()) {
+                stats.unmappedTags++
+            } else if (range < config.minRange || range > config.maxRange) {
+                stats.outOfRangeTags++
+            } else {
+                usableCount++
             }
         }
-        if (usable.isEmpty()) return 0
+        if (usableCount == 0) return 0
 
         val cameraYaw = mount.cameraYawInField(heading, turret)
-        val yawRate = cameraYawRate(t)
+        val cosCamYaw = cos(cameraYaw)
+        val sinCamYaw = sin(cameraYaw)
+        val cosHead = cos(heading)
+        val sinHead = sin(heading)
+        val cosTurret = cos(turret)
+        val sinTurret = sin(turret)
+        val camOffsetX = mount.pivotInRobot.x + (mount.cameraInTurret.x * cosTurret - mount.cameraInTurret.y * sinTurret)
+        val camOffsetY = mount.pivotInRobot.y + (mount.cameraInTurret.x * sinTurret + mount.cameraInTurret.y * cosTurret)
+        val cp = cos(mount.cameraPitchUp)
+        val sp = sin(mount.cameraPitchUp)
+        val n = usableCount.toDouble()
+
         var accepted = 0
+        for (i in frame.tags.indices) {
+            val tag = frame.tags[i]
+            val placements = tagMap.candidates(tag.id)
+            if (placements.isEmpty()) continue
+            val rawRange = hypot(tag.out, tag.right)
+            if (rawRange < config.minRange || rawRange > config.maxRange) continue
 
-        for (tag in usable) {
-            val leveled = mount.levelize(tag.right, tag.down, tag.out)
-            val range = hypot(leveled.x, leveled.y)
-            val toTagField = Vec2(leveled.x, leveled.y).rotated(cameraYaw)
-            val rayAngle = atan2(toTagField.y, toTagField.x)
+            val leveledX = tag.out * cp + tag.down * sp
+            val leveledY = -tag.right
+            val leveledZ = tag.out * sp - tag.down * cp
+            val range = hypot(leveledX, leveledY)
 
-            // Anisotropic measurement noise: large along the line of sight, bearing-driven across it.
+            val toTagFieldX = leveledX * cosCamYaw - leveledY * sinCamYaw
+            val toTagFieldY = leveledX * sinCamYaw + leveledY * cosCamYaw
+            val rayAngle = atan2(toTagFieldY, toTagFieldX)
+
             val sigmaRange = max(config.rangeSigmaFloor, config.rangeSigmaPerInchSq * range * range)
             val sigmaAngle = sqrt(
                 config.pixelBearingSigma * config.pixelBearingSigma +
-                config.turretAngleSigma * config.turretAngleSigma +
-                config.headingSigma * config.headingSigma +
-                (yawRate * config.captureTimingSigma) * (yawRate * config.captureTimingSigma)
+                        config.turretAngleSigma * config.turretAngleSigma +
+                        config.headingSigma * config.headingSigma +
+                        (yawRate * config.captureTimingSigma) * (yawRate * config.captureTimingSigma)
             )
             val sigmaAcross = range * sigmaAngle
             val ux = cos(rayAngle); val uy = sin(rayAngle)
-            // Treat all tags of one frame as perfectly correlated (they share heading / turret / pitch / timing errors).
-            val n = usable.size.toDouble()
+
             val rxx = n * (sigmaRange * sigmaRange * ux * ux + sigmaAcross * sigmaAcross * uy * uy)
             val ryy = n * (sigmaRange * sigmaRange * uy * uy + sigmaAcross * sigmaAcross * ux * ux)
             val rxy = n * ((sigmaRange * sigmaRange - sigmaAcross * sigmaAcross) * ux * uy)
             val sigmaHeight = config.heightSigmaBase + config.heightSigmaPerInch * range
 
             val placementSigma = tagMap.placementSigma(tag.id)
-            // A resting angle that is a bit off moves the tag a little: widen the noise instead of rejecting.
             val p2 = placementSigma * placementSigma
             val rxx2 = rxx + p2; val ryy2 = ryy + p2
             val sigmaHeight2 = sqrt(sigmaHeight * sigmaHeight + p2)
 
-            val candidates = ArrayList<Candidate>()
-            for ((index, placement) in tagMap.candidates(tag.id).withIndex()) {
-                val solved = solve(tag, placement, heading, turret)
-                // The camera's height is known. A wrong tag placement shows up as a wrong implied height.
-                val heightResidual = (solved.impliedCameraHeight - mount.cameraHeight) / sigmaHeight2
-                val inn = filter.innovation(t, solved.robot.x, solved.robot.y, rxx2, rxy, ryy2) ?: continue
-                candidates.add(Candidate(index, solved.robot, inn.mahalanobisSq + heightResidual * heightResidual, inn.mahalanobisSq))
+            // Evaluate up to 2 candidates with zero list allocations
+            var bestIdx = -1; var bestScore = Double.POSITIVE_INFINITY; var bestMahal = 0.0; var bestX = 0.0; var bestY = 0.0
+            var secondScore = Double.POSITIVE_INFINITY
+            var c0Score = Double.POSITIVE_INFINITY; var c0Mahal = 0.0; var c0X = 0.0; var c0Y = 0.0
+            var c1Score = Double.POSITIVE_INFINITY; var c1Mahal = 0.0; var c1X = 0.0; var c1Y = 0.0
+
+            for (index in placements.indices) {
+                val p = placements[index]
+                solveScalar(leveledX, leveledY, leveledZ, p.x, p.y, p.z, cosCamYaw, sinCamYaw, cosHead, sinHead, camOffsetX, camOffsetY)
+                val heightResidual = (solvedImpliedHeight - mount.cameraHeight) / sigmaHeight2
+                val mahalSq = filter.computeInnovationSq(t, solvedRobotX, solvedRobotY, rxx2, rxy, ryy2)
+                if (mahalSq.isNaN()) continue
+                val score = mahalSq + heightResidual * heightResidual
+
+                if (index == 0) { c0Score = score; c0Mahal = mahalSq; c0X = solvedRobotX; c0Y = solvedRobotY }
+                else if (index == 1) { c1Score = score; c1Mahal = mahalSq; c1X = solvedRobotX; c1Y = solvedRobotY }
+
+                if (score < bestScore) {
+                    secondScore = bestScore
+                    bestScore = score; bestIdx = index; bestMahal = mahalSq; bestX = solvedRobotX; bestY = solvedRobotY
+                } else if (score < secondScore) {
+                    secondScore = score
+                }
             }
-            if (candidates.isEmpty()) continue
+            if (bestIdx == -1) continue
 
             val group = tagMap.group(tag.id)
-            val chosen: Candidate
-            if (config.useGroupBelief && group != null && candidates.size == 2) {
-                // All tags of one structure share its state. Combine this tag's evidence with what earlier tags said.
-                val llr = ((candidates[1].score - candidates[0].score) / 2.0)
-                    .coerceIn(-config.beliefStepLimit, config.beliefStepLimit)
-                val prior = beliefs[group] ?: 0.0
+            val chosenIdx: Int; val chosenScore: Double; val chosenMahal: Double; val chosenX: Double; val chosenY: Double
+            if (config.useGroupBelief && group != null && placements.size == 2 && c0Score.isFinite() && c1Score.isFinite()) {
+                val llr = ((c1Score - c0Score) / 2.0).coerceIn(-config.beliefStepLimit, config.beliefStepLimit)
+                val slot = beliefSlot(group)
+                val prior = beliefArr[slot]
                 val posterior = prior + llr
-                if (min(candidates[0].score, candidates[1].score) <= config.gateChiSq) {
-                    beliefs[group] = (prior * config.beliefDecay + llr).coerceIn(-config.beliefLimit, config.beliefLimit)
+                if (min(c0Score, c1Score) <= config.gateChiSq) {
+                    beliefArr[slot] = (prior * config.beliefDecay + llr).coerceIn(-config.beliefLimit, config.beliefLimit)
                 }
                 if (abs(posterior) < config.ambiguityMargin / 2.0) { stats.ambiguousTags++; continue }
-                chosen = if (posterior >= 0.0) candidates[0] else candidates[1]
-            } else {
-                candidates.sortBy { it.score }
-                chosen = candidates[0]
-                if (candidates.size > 1 && candidates[1].score - chosen.score < config.ambiguityMargin) {
-                    stats.ambiguousTags++
-                    continue
+                if (posterior >= 0.0) {
+                    chosenIdx = 0; chosenScore = c0Score; chosenMahal = c0Mahal; chosenX = c0X; chosenY = c0Y
+                } else {
+                    chosenIdx = 1; chosenScore = c1Score; chosenMahal = c1Mahal; chosenX = c1X; chosenY = c1Y
                 }
+            } else {
+                if (secondScore - bestScore < config.ambiguityMargin) { stats.ambiguousTags++; continue }
+                chosenIdx = bestIdx; chosenScore = bestScore; chosenMahal = bestMahal; chosenX = bestX; chosenY = bestY
             }
 
-            if (chosen.score > config.gateChiSq) {
+            if (chosenScore > config.gateChiSq) {
                 stats.gatedTags++
                 consecutiveGated++
                 if (consecutiveGated >= config.rejectsBeforeRecovery) {
@@ -276,12 +394,12 @@ class PoseEstimator(
                 }
                 continue
             }
-            if (filter.correct(t, chosen.robot.x, chosen.robot.y, rxx2, rxy, ryy2)) {
+            if (filter.correct(t, chosenX, chosenY, rxx2, rxy, ryy2)) {
                 accepted++
                 consecutiveGated = 0
                 stats.acceptedTags++
-                stats.lastMahalanobisSq = chosen.mahalanobisSq
-                stats.lastHypothesisIndex = chosen.index
+                stats.lastMahalanobisSq = chosenMahal
+                stats.lastHypothesisIndex = chosenIdx
             }
         }
         return accepted

@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.subsystems.vision
 
-import com.bylazar.telemetry.TelemetryManager
 import com.qualcomm.hardware.limelightvision.Limelight3A
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.SubsystemBase
@@ -18,7 +17,8 @@ import org.firstinspires.ftc.teamcode.utils.units.nowSeconds
 @Suppress("JoinDeclarationAndAssignment")
 class Limelight(
     hardwareMap: HardwareMap,
-    private val visionConsumer: VisionConsumer
+    private val visionConsumer: VisionConsumer,
+    private val isFilteringDisabled: Boolean = true
 ): SubsystemBase() {
 
     private var limelight: Limelight3A
@@ -29,26 +29,28 @@ class Limelight(
         limelight.setPollRateHz(LimelightConstants.Configuration.POLL_RATE_HZ)
         limelight.pipelineSwitch(LimelightConstants.Configuration.APRIL_TAG_PIPELINE)
     }
-
     override fun periodic() {
+        if (isFilteringDisabled) return
+
         val result = limelight.latestResult ?: return
         if (!result.isValid) return
 
-        // The Limelight is polled faster than it produces frames: never feed the same frame twice.
         val timestamp = result.timestamp
         if (timestamp == lastResultTimestamp) return
         lastResultTimestamp = timestamp
 
         if (result.staleness > LimelightConstants.Configuration.STALENESS_THRESHOLD) return
 
-        val tags = result.fiducialResults.map { fiducial ->
-            // Tag center in CAMERA space. Axis convention is verified by LimelightAxisCalibration.
-            val p = fiducial.targetPoseCameraSpace.position.toUnit(DistanceUnit.INCH)
-            TagObservation(fiducial.fiducialId, right = p.x, down = p.y, out = p.z)
-        }
-        if (tags.isEmpty()) return
+        val fiducials = result.fiducialResults
+        if (fiducials.isEmpty()) return
 
-        // When was the picture taken, on the robot's clock?
+        val tags = ArrayList<TagObservation>(fiducials.size)
+        for (i in fiducials.indices) {
+            val fiducial = fiducials[i]
+            val p = fiducial.targetPoseCameraSpace.position.toUnit(DistanceUnit.INCH)
+            tags.add(TagObservation(fiducial.fiducialId, right = p.x, down = p.y, out = p.z))
+        }
+
         val ageMs = result.staleness + result.captureLatency + result.targetingLatency +
                 LimelightConstants.Configuration.LATENCY_CALIBRATION_MS
         visionConsumer.accept(VisionFrame(nowSeconds() - (ageMs / 1000.0), tags))

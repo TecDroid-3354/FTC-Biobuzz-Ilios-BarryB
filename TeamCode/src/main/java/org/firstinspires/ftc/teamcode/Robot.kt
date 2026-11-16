@@ -5,22 +5,19 @@ import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.seattlesolvers.solverslib.command.Command
-import com.seattlesolvers.solverslib.command.RepeatCommand
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.systems.Superstructure
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
-import org.firstinspires.ftc.teamcode.utils.extensions.cross
 import org.firstinspires.ftc.teamcode.utils.extensions.leftBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.leftTrigger
 import org.firstinspires.ftc.teamcode.utils.extensions.onFalse
 import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
 import org.firstinspires.ftc.teamcode.utils.extensions.rightBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
-import org.firstinspires.ftc.teamcode.utils.extensions.rumble
-import org.firstinspires.ftc.teamcode.utils.extensions.stopRumble
+import org.firstinspires.ftc.teamcode.utils.extensions.triangle
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
 
 @Suppress("JoinDeclarationAndAssignment")
@@ -64,7 +61,7 @@ class Robot(
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
         // TODO Check why PoseStorage doesn't work
-        superstructure.setPose(Pose(103.49, 134.45, 0.0))
+        superstructure.setPose(Pose(70.75, 22.6, 0.0))
         superstructure.setDriveDefaultCommand()
 
         superstructure.setTurretDefaultCommand()
@@ -90,10 +87,11 @@ class Robot(
      */
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
-        superstructure.logFlywheel()
-        superstructure.logOdometry()
+//        superstructure.logFlywheel()
+//        superstructure.logOdometry()
+//        superstructure.logIntakeRollers()
         superstructure.logTurret()
-        telemetryManager.update(telemetry)
+        telemetryManager.update()
     }
 
     /* Common method to follow any path */
@@ -119,11 +117,21 @@ class Robot(
             .onFalse(superstructure.stopShootingSequence().alongWith(superstructure.stopControllerRumble()))
 
         controller.leftTrigger()
-            .onTrue(superstructure.setFlywheelConfigurableControl())
-            .onFalse(superstructure.setFlywheelPresetVelocity())
+            .onTrue(superstructure.setDynamicFlywheelConfigurableVelocity())
+            .onFalse(superstructure.setDynamicFlywheelIdleVelocity())
+
+        controller.leftBumper()
+            .onTrue(superstructure.setHoodConfigurableControl())
+
+        controller.circle()
+            .onTrue(superstructure.setTurretConfigurableAngle())
 
         controller.rightBumper()
             .whileTrue(superstructure.setFloorIntakeSequence())
             .onFalse(superstructure.setIntakeIdle())
+
+        controller.triangle()
+            .onTrue(superstructure.setIntakeRollersConfigurableControl())
+            .onFalse(superstructure.stopIntakeRollers())
     }
 }

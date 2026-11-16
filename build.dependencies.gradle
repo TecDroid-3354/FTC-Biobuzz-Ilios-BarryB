@@ -20,15 +20,15 @@ dependencies {
 
     // Pedro Pathing
     implementation 'com.pedropathing:revhub:3.0.2' // Library
-    implementation 'com.pedropathing:tuning:1.0.1' // Auto Tuning
+    implementation 'com.pedropathing:tuning:1.0.3' // Auto Tuning
 
     // Marrow
-    implementation 'com.skeletonarmyftc.marrow:core:1.2.2'
+    implementation 'com.skeletonarmyftc.marrow:core:1.2.5'
 
     // Dairy Core
     //implementation("dev.frozenmilk.dairy:Core:2.2.4")
 
     // Panels Dashboard
-    implementation "com.bylazar:fullpanels:1.0.19"
+    implementation "com.bylazar:fullpanels:1.0.20"
 }
 

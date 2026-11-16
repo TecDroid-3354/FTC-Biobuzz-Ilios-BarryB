@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.constants
 
 import com.bylazar.configurables.annotations.Configurable
 import com.qualcomm.robotcore.hardware.PIDCoefficients
-import com.qualcomm.robotcore.hardware.PIDFCoefficients
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import org.firstinspires.ftc.teamcode.subsystems.indexer.IndexerConstants
 import org.firstinspires.ftc.teamcode.subsystems.intake.intakeRollers.IntakeRollersConstants
@@ -54,14 +53,15 @@ object SubsystemPresetTargets {
     val DROP_DOWN_FLOWER_ANGLE = Angle.fromDegrees(0.0)
 
     // Shooter Preset RPM Targets //
-    val FLYWHEEL_PRESET_RPM = AngularVelocity.fromRpm(1800.0)
+    val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(900.0)
+    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(2000.0)
 
     // Hood Preset Angle Targets //
     val HOOD_PRESET_ANGLE = Angle.fromDegrees(20.0)
     val HOOD_HOME_ANGLE = Angle.fromDegrees(0.0)
 
     // Turret Preset Angle Targets //
-    val TURRET_ZERO_ANGLE = Angle(0.0)
+    val TURRET_HOME_ANGLE = Angle.fromDegrees(180.0)
 
     // Indexer Preset RPM Targets //
     val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1900.0)
@@ -119,7 +119,9 @@ object SubsystemControlGains {
 
     // Shooter PID and Feedforward Configurables //
     @JvmField
-    var FLYWHEEL_MOTOR_PID = PIDCoefficients(-0.41, 0.0, 0.0)
+    var FLYWHEEL_MOTOR_PID = PIDCoefficients(-0.21, 0.0, 0.0)
+    @JvmField
+    var SLOWING_FLYWHEEL_MOTOR_PID = PIDCoefficients(-0.12, 0.0, 0.0)
     @JvmField
     var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, -0.765, 0.0)
 

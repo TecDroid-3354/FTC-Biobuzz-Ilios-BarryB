@@ -12,6 +12,7 @@ import com.seattlesolvers.solverslib.command.DeferredCommand
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
+import com.seattlesolvers.solverslib.geometry.Pose2d
 import com.seattlesolvers.solverslib.geometry.Rotation2d
 import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.seattlesolvers.solverslib.geometry.Vector2d
@@ -57,9 +58,10 @@ class Mecanum(
                     this.isFilterDisabled = true
                 }
 
-    private var isFilterDisabled = false
+    var isFilterDisabled = false
     private var angleController: PIDController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
     private var lastDriveAngle: Angle = Angle(0.0)
+    private var lastDrivePose: Pose = Pose(0.0, 0.0, 0.0)
 
     init {
         // Initialization code
@@ -72,9 +74,15 @@ class Mecanum(
     override fun periodic() {
         follower.update()
 
+        val odometry = follower.pose()
         if (isFilterDisabled.not()) {
-            val odometry = follower.pose()
             poseEstimator.updateOdometry(nowSeconds(), odometry.x(), odometry.y(), odometry.heading(), turretAngle().radians)
+        }
+
+        lastDrivePose = if (!poseEstimator.isInitialized || isFilterDisabled) {
+            odometry
+        } else {
+            Pose(poseEstimator.x, poseEstimator.y, odometry.heading())
         }
 
         // Update angle controller
@@ -151,9 +159,7 @@ class Mecanum(
      * @return a [Pose2D] containing the robot's current position in the standard FTC Coordinates
      */
     fun getPose(): Pose {
-        val odometry = follower.pose()
-        if (!poseEstimator.isInitialized || isFilterDisabled) return odometry
-        return Pose(poseEstimator.x, poseEstimator.y, odometry.heading())
+        return lastDrivePose
     }
 
     /**
@@ -161,7 +167,7 @@ class Mecanum(
      * @return a [Rotation2d] as the robot's current heading in radians.
      */
     fun getRotation(): Rotation2d {
-        return Rotation2d(getPose().heading())
+        return Rotation2d(lastDrivePose.heading())
     }
 
     /**
@@ -187,20 +193,17 @@ class Mecanum(
      * If the result is positive, then the robot is driving towards the target.
      * If the result is negative, then the robot is driving away from the target.
      */
-    fun getRobotRadialVelocity(fieldToTarget: Translation2d): LinearVelocity {
-        val fieldRelativeVelocity = getFieldRelativeVelocity()
-        val robotToTargetVector = fieldToTarget.minus(getPose().toPose2d().translation)
-        val robotToTargetDistance = robotToTargetVector.norm
+    fun getRobotRadialVelocity(targetX: Double, targetY: Double, pose: Pose2d): LinearVelocity {
+        val dx = targetX - pose.x
+        val dy = targetY - pose.y
+        val dist = kotlin.math.hypot(dx, dy)
+        if (dist < 1e-5) return LinearVelocity(0.0)
 
-        if (robotToTargetDistance < 1e-5) return LinearVelocity(0.0)
-
-        val radialUnitTranslation = robotToTargetVector.div(robotToTargetDistance)
-        val radialUnitVector = Vector2d(radialUnitTranslation.x, radialUnitTranslation.y)
-
-        val velocityVector = Vector2d(fieldRelativeVelocity.vxMetersPerSecond, fieldRelativeVelocity.vyMetersPerSecond)
-        val radialVectorMagnitude = velocityVector.dot(radialUnitVector)
-
-        return LinearVelocity.fromMps(radialVectorMagnitude)
+        val vel = follower.velocity()
+        val vxMps = vel.vx * 0.0254
+        val vyMps = vel.vy * 0.0254
+        val radialMps = (vxMps * dx + vyMps * dy) / dist
+        return LinearVelocity.fromMps(radialMps)
     }
 
     /**
@@ -208,22 +211,18 @@ class Mecanum(
      * If the result is positive, then the robot is driving towards the target.
      * If the result is negative, then the robot is driving away from the target.
      */
-    fun getRobotTangentialVelocity(fieldToTarget: Translation2d): LinearVelocity {
-        val fieldRelativeSpeeds = getFieldRelativeVelocity()
+    fun getRobotTangentialVelocity(targetX: Double, targetY: Double, pose: Pose2d): LinearVelocity {
+        val dx = targetX - pose.x
+        val dy = targetY - pose.y
+        val dist = kotlin.math.hypot(dx, dy)
+        if (dist < 1e-5) return LinearVelocity(0.0)
 
-        val robotToTargetVector = fieldToTarget.minus(getPose().toPose2d().translation)
-        val robotToTargetDistance = robotToTargetVector.norm
-
-        if (robotToTargetDistance < 1e-5) return LinearVelocity(0.0)
-
-        val radialUnitTranslation = robotToTargetVector.div(robotToTargetDistance)
-        val tangentialUnitTranslation = radialUnitTranslation.rotateBy(Rotation2d.fromDegrees(90.0))
-        val tangentialUnitVector = Vector2d(tangentialUnitTranslation.x, tangentialUnitTranslation.y)
-
-        val velocityVector = Vector2d(fieldRelativeSpeeds.vxMetersPerSecond, fieldRelativeSpeeds.vyMetersPerSecond)
-        val tangentialVectorMagnitude = velocityVector.dot(tangentialUnitVector)
-
-        return LinearVelocity.fromMps(tangentialVectorMagnitude)
+        val vel = follower.velocity()
+        val vxMps = vel.vx * 0.0254
+        val vyMps = vel.vy * 0.0254
+        // 90-degree CCW rotation of radial unit vector (dx/dist, dy/dist) is (-dy/dist, dx/dist)
+        val tangentialMps = (-vxMps * dy + vyMps * dx) / dist
+        return LinearVelocity.fromMps(tangentialMps)
     }
 
     /**
@@ -297,6 +296,7 @@ class Mecanum(
     fun setPose(pose: Pose) {
         follower.setPose(pose)
         poseEstimator.resetPose()
+        lastDrivePose = pose
     }
 
     private fun configureWeaver() {

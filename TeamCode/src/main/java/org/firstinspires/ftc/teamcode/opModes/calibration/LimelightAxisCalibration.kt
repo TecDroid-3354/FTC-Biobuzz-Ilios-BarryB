@@ -15,7 +15,6 @@ import org.firstinspires.ftc.teamcode.subsystems.vision.LimelightConstants
  * If any of that is flipped, fix the mapping in Limelight.periodic (one line), nothing else.
  */
 @TeleOp(group = "Calibration", name = "Limelight Axis Calibration")
-@Disabled
 class LimelightAxisCalibration : LinearOpMode() {
     override fun runOpMode() {
         val limelight = hardwareMap.get(Limelight3A::class.java, LimelightConstants.Identification.LIMELIGHT_ID)

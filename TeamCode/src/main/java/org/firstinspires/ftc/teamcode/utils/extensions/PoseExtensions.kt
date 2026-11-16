@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.utils.extensions
 import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.seattlesolvers.solverslib.geometry.Pose2d
+import com.seattlesolvers.solverslib.geometry.Transform2d
 import com.seattlesolvers.solverslib.geometry.Translation2d
 import com.skeletonarmy.marrow.weaver.PathResult
 import com.skeletonarmy.marrow.weaver.PedroPathingConverter
@@ -10,6 +11,7 @@ import com.skeletonarmy.marrow.zones.Point
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D
+import org.firstinspires.ftc.teamcode.utils.units.Vec2
 
 /**
  * Per Pedro Pathing's documentation, transform from a standard [Pose2D] to Pedro's [Pose].
@@ -57,6 +59,11 @@ fun PathResult.toPedroPath(): Path {
 
 fun Pose.toTranslation2d(): Translation2d {
     return this.toPose2d().translation
+}
+
+/** [Transform2d] to [Vec2], overrides rotation */
+fun Transform2d.toVec2(): Vec2 {
+    return Vec2(this.translation.x, this.translation.y)
 }
 
 /**

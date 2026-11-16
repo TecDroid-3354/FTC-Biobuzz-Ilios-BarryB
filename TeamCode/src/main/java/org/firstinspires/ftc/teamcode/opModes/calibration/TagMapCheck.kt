@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.opModes.calibration
 
 import com.qualcomm.hardware.limelightvision.Limelight3A
-import com.qualcomm.robotcore.eventloop.opmode.Disabled
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit
@@ -22,10 +21,10 @@ import org.firstinspires.ftc.teamcode.utils.localization.TagObservation
  */
 @TeleOp(group = "Calibration", name = "Tag Map Check")
 class TagMapCheck : LinearOpMode() {
-    private val KNOWN_X = 40.0
-    private val KNOWN_Y = 40.0
-    private val KNOWN_HEADING_DEG = 45.0
-    private val KNOWN_TURRET_DEG = 0.0
+    private val KNOWN_X = 70.75
+    private val KNOWN_Y = 22.6
+    private val KNOWN_HEADING_DEG = 0.0
+    private val KNOWN_TURRET_DEG = 90.0
 
     override fun runOpMode() {
         val limelight = hardwareMap.get(Limelight3A::class.java, LimelightConstants.Identification.LIMELIGHT_ID)
@@ -33,7 +32,7 @@ class TagMapCheck : LinearOpMode() {
         limelight.start()
         val estimator = PoseEstimator(
             LocalizationConstants.mount,
-            LocalizationConstants.tagMap,
+            LocalizationConstants.biobuzzAprilTagDynamicMap,
             LocalizationConstants.estimatorConfig
         )
         waitForStart()
@@ -49,7 +48,7 @@ class TagMapCheck : LinearOpMode() {
                 estimator.diagnose(tags, KNOWN_X, KNOWN_Y, Math.toRadians(KNOWN_HEADING_DEG), Math.toRadians(KNOWN_TURRET_DEG))
                     .forEach {
                         telemetry.addData(
-                            "tag ${it.id} state ${if (it.candidateIndex == 0) "+30" else "-30"}",
+                            "tag ${it.id} state ${if (it.candidateIndex == 0) "Y+ tilted upwards +30" else "Y- Tilted upwards -30"}",
                             "x=%.1f y=%.1f  off by %.1f in  height residual %.1f in",
                             it.robotX, it.robotY, it.errorInches, it.heightResidualInches
                         )
