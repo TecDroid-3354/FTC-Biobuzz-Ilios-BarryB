@@ -2,28 +2,29 @@ package org.firstinspires.ftc.teamcode.subsystems.shooter.flywheel
 
 import com.bylazar.telemetry.TelemetryManager
 import com.qualcomm.robotcore.hardware.HardwareMap
-import com.qualcomm.robotcore.hardware.PIDCoefficients
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import com.seattlesolvers.solverslib.command.InstantCommand
+import com.seattlesolvers.solverslib.controller.PIDController
 import com.seattlesolvers.solverslib.util.Debouncer
 import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
-import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
+import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains.FLYWHEEL_MOTOR_PID
+import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
-import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.Time
+import org.firstinspires.ftc.teamcode.utils.units.Voltage
 import java.util.function.Supplier
 import kotlin.math.abs
 
-class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
+class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Supplier<Voltage>): SubsystemBase() {
 
     private lateinit var flywheelMotor: OpMotorEx
 
@@ -31,25 +32,54 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity()
 
+    private val flywheelController: PIDController = PIDController(FLYWHEEL_MOTOR_PID.p, FLYWHEEL_MOTOR_PID.i, FLYWHEEL_MOTOR_PID.d)
+
+    private var flywheelFeedforward: SimpleMotorFeedforward = FLYWHEEL_MOTOR_FEEDFORWARD
+
     private val atTargetDebouncer: Debouncer = Debouncer(0.06, Debouncer.DebounceType.Both)
 
     init {
         // Initialization code
         configureMotors()
-
-        setDeceleratingPID().run()
-        //setFlywheelIdleVelocity().run()
     }
 
     /** Runs every cycle */
     override fun periodic() {
-        if (flywheelMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.FLYWHEEL_MOTOR_PID)
-            || flywheelMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)) {
-            updateFlywheelMotorControlGains(SubsystemControlGains.FLYWHEEL_MOTOR_PID, SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
+        // Update PID
+        if (flywheelController.p != FLYWHEEL_MOTOR_PID.p
+            || flywheelController.i != FLYWHEEL_MOTOR_PID.i
+            || flywheelController.d != FLYWHEEL_MOTOR_PID.d) {
+            flywheelController.setPID(FLYWHEEL_MOTOR_PID.p, FLYWHEEL_MOTOR_PID.i, FLYWHEEL_MOTOR_PID.d)
         }
 
+        // Update Feedforward
+        if (flywheelFeedforward.ks != FLYWHEEL_MOTOR_FEEDFORWARD.ks
+            || flywheelFeedforward.kv != FLYWHEEL_MOTOR_FEEDFORWARD.kv) {
+            flywheelFeedforward = SimpleMotorFeedforward(FLYWHEEL_MOTOR_FEEDFORWARD.ks, FLYWHEEL_MOTOR_FEEDFORWARD.kv)
+        }
+
+        // Update configurable velocity
         if (configurableFlywheelTargetVelocity.rpm.equals(SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM).not()) {
             updateFlywheelConfigurableVelocity(SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM)
+        }
+
+        // Don't move if the target is greater than 0.
+        if (flywheelTargetVelocity.rpm > 0.0) {
+            // Calculate feedforward
+            val feedforward = flywheelFeedforward.calculate(flywheelTargetVelocity.rpm)
+            // Calculate PID
+            val pid = flywheelController.calculate(-flywheelMotor.getVelocity().get().rpm, flywheelTargetVelocity.rpm)
+            // Add them both
+            val nominalPower = pid + feedforward
+            // Calculate voltage factor compensation
+            val voltageFactor = 12.0 / voltage.get().volts
+            // Calculate voltage
+            val compensation = nominalPower * voltageFactor
+
+            flywheelMotor.setPower(compensation)
+        } else {
+            flywheelController.reset()
+            flywheelMotor.setPower(0.0)
         }
     }
 
@@ -61,28 +91,12 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     /**
-     * Updates the [flywheelMotor]'s [com.qualcomm.robotcore.hardware.PIDCoefficients] and [SimpleMotorFeedforward]'s coefficients
-     * by applying a new configuration.
-     * @param pidCoefficients the new [PIDCoefficients]
-     * @param feedforward the new [SimpleMotorFeedforward] Coefficients
-     */
-    private fun updateFlywheelMotorControlGains(pidCoefficients: PIDCoefficients, feedforward: SimpleMotorFeedforward) {
-        val newConfig = MotorVelocityModeConfiguration()
-            .withVelocityCoefficients(pidCoefficients)
-            .withFeedforwardCoefficients(feedforward)
-
-        flywheelMotor.applyModeConfiguration(newConfig)
-    }
-
-    /**
      * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_IDLE_RPM] value.
      * @return an [Runnable] which enables the flywheel at the given velocity.
      */
     fun setFlywheelIdleVelocity(): Runnable {
         return {
             flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_RPM
-
-            flywheelMotor.setVelocity(SubsystemPresetTargets.FLYWHEEL_IDLE_RPM)
         }
     }
 
@@ -93,8 +107,6 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
     fun setFlywheelPresetShootingVelocity(): Runnable {
         return {
             flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM
-
-            flywheelMotor.setVelocity(SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM)
         }
     }
 
@@ -107,8 +119,6 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
             val clampedVelocityRPM = MathUtils.clamp(configurableFlywheelTargetVelocity.rpm,
                 SubsystemLimits.FLYWHEEL_MAX_VELOCITY.start.rpm, SubsystemLimits.FLYWHEEL_MAX_VELOCITY.endInclusive.rpm)
             flywheelTargetVelocity = AngularVelocity.fromRpm(clampedVelocityRPM)
-
-            flywheelMotor.setVelocity(configurableFlywheelTargetVelocity)
         }
     }
 
@@ -121,8 +131,6 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
             val clampedVelocityRPM = MathUtils.clamp(flywheelCalculatedVelocity.rpm,
                 SubsystemLimits.FLYWHEEL_MAX_VELOCITY.start.rpm, SubsystemLimits.FLYWHEEL_MAX_VELOCITY.endInclusive.rpm)
             flywheelTargetVelocity = AngularVelocity.fromRpm(clampedVelocityRPM)
-
-            flywheelMotor.setVelocity(flywheelCalculatedVelocity)
         }
     }
 
@@ -148,29 +156,13 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         }, this)
     }
 
-    fun setAcceleratingPID(): Runnable {
-        return {
-            updateFlywheelMotorControlGains(
-                SubsystemControlGains.FLYWHEEL_MOTOR_PID,
-                SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
-        }
-    }
-
-    fun setDeceleratingPID(): Runnable {
-        return {
-            updateFlywheelMotorControlGains(
-                SubsystemControlGains.SLOWING_FLYWHEEL_MOTOR_PID,
-                SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD)
-        }
-    }
-
     /**
      * Calculate the HIVE Scoring [Flywheel] target [AngularVelocity] based on the distance to its target
      * And making use of [FlywheelConstants.StoredPolynomials.scoringPolynomial].
      */
     private fun getCalculatedHiveScoringVelocity(flywheelDistanceToTarget: Distance): AngularVelocity {
         val distanceInMeters = flywheelDistanceToTarget.meters
-        val calculatedRPMs = FlywheelConstants.StoredPolynomials.scoringPolynomial.getOrThrow().evaluate(distanceInMeters)
+        val calculatedRPMs = FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
 
         return AngularVelocity.fromRpm(calculatedRPMs)
     }
@@ -184,6 +176,10 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         val calculatedTOF = FlywheelConstants.StoredPolynomials.ToFPolynomial.getOrThrow().evaluate(distanceInMeters)
 
         return Time(calculatedTOF)
+    }
+
+    fun getRPMDrop(): AngularVelocity {
+        return flywheelTargetVelocity.plus(flywheelMotor.getVelocity().get())
     }
 
     /**
@@ -213,16 +209,12 @@ class Flywheel(private val hardwareMap: HardwareMap): SubsystemBase() {
         flywheelMotor = OpMotorEx(hardwareMap, FlywheelConstants.Identification.FLYWHEEL_LEAD_MOTOR_ID)
         flywheelMotor.applyConfigurationAndResetEncoder(FlywheelConstants.Configuration.leadMotorConfiguration)
 
-//        for (point in FlywheelConstants.Interpolation.SCORING_POINTS_LIST) {
-//            FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.rpm)
-//        }
-//
-//        FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
-//
-//        for (point in FlywheelConstants.Interpolation.TIME_OF_FLIGHT_POINTS_LIST) {
-//            FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.seconds)
-//        }
-//
-//        FlywheelConstants.Interpolation.TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT.createLUT()
+        flywheelController.setTolerance(SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm)
+
+        for ((key, value) in FlywheelConstants.Interpolation.SCORING_POINTS_LIST) {
+            FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(key.meters, value.rpm)
+        }
+
+        FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
     }
 }

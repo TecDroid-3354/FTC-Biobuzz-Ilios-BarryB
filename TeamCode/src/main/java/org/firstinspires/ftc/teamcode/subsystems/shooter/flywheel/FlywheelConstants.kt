@@ -7,12 +7,12 @@ import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguratio
 import org.firstinspires.ftc.teamcode.utils.controlProfiles.Polynomials
 import org.firstinspires.ftc.teamcode.utils.controllers.invertSigns
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
+import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorPercentageModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.utils.units.Time
 
-// TODO Before test validate these values
 object FlywheelConstants {
 
     object Identification {
@@ -20,48 +20,25 @@ object FlywheelConstants {
     }
 
     object Mechanical {
-        const val GEAR_RATIO = (55.0 / 24.0)
+        const val GEAR_RATIO = (50.0 / 30.0)
         val VELOCITY_TARGET_THRESHOLD = AngularVelocity.fromRpm(500.0)
     }
 
     object Interpolation {
         val SCORING_POINTS_LIST: Map<Distance, AngularVelocity> = mapOf(
-            Distance(0.0) to AngularVelocity(0.0),
-            Distance(0.25) to AngularVelocity(0.1),
-            Distance(0.50) to AngularVelocity(0.2),
-            Distance(0.75) to AngularVelocity(0.3),
-            Distance(1.00) to AngularVelocity(0.4),
-            Distance(1.25) to AngularVelocity(0.5),
-            Distance(1.50) to AngularVelocity(0.6),
-            Distance(1.75) to AngularVelocity(0.7),
-            Distance(2.00) to AngularVelocity(0.8),
-            Distance(2.25) to AngularVelocity(0.9),
-            Distance(2.50) to AngularVelocity(0.95),
-            Distance(2.75) to AngularVelocity(0.99)
+            Distance.fromMeters(0.75) to AngularVelocity.fromRpm(1700.0),
+            Distance.fromMeters(1.00) to AngularVelocity.fromRpm(1750.0),
+            Distance.fromMeters(1.25) to AngularVelocity.fromRpm(1770.0),
+            Distance.fromMeters(1.50) to AngularVelocity.fromRpm(1830.0),
         )
 
         val SCORING_HIVE_INTERPOLATED_LUT = InterpLUT()
-
-        val TIME_OF_FLIGHT_POINTS_LIST: Map<Distance, Time> = mapOf(
-            Distance(0.0) to Time(0.0),
-            Distance(0.25) to Time(0.1),
-            Distance(0.50) to Time(0.2),
-            Distance(0.75) to Time(0.3),
-            Distance(1.00) to Time(0.4),
-            Distance(1.25) to Time(0.5),
-            Distance(1.50) to Time(0.6),
-            Distance(1.75) to Time(0.7),
-            Distance(2.00) to Time(0.8),
-            Distance(2.25) to Time(0.9),
-            Distance(2.50) to Time(0.95),
-            Distance(2.75) to Time(0.99)
-        )
-
-        val TIME_OF_FLIGHT_HIVE_INTERPOLATED_LUT = InterpLUT()
     }
 
     object Configuration {
         private const val INVERTED = false
+
+        private const val MAX_POWER = 1.0
 
         private val zeroPowerBehavior = Motor.ZeroPowerBehavior.FLOAT
 
@@ -70,16 +47,15 @@ object FlywheelConstants {
             .withGearRatio(Mechanical.GEAR_RATIO)
             .withZeroPowerBehavior(zeroPowerBehavior)
 
-        private val velocityModeConfiguration = MotorVelocityModeConfiguration()
-            .withVelocityCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_PID.invertSigns())
-            .withFeedforwardCoefficients(SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD.invertSigns())
+        private val percentageModeConfiguration = MotorPercentageModeConfiguration()
+            .withMaxPower(MAX_POWER)
 
         val leadMotorConfiguration = OpMotorExConfiguration()
             .withGenericMotorConfiguration(motorGenericConfiguration)
-            .withControlModeConfiguration(velocityModeConfiguration)
+            .withControlModeConfiguration(percentageModeConfiguration)
     }
     object StoredPolynomials {
-        val scoringPolynomial : Result<Polynomials> = Polynomials.of(2, -211.942, 590.854, 1302.052)
+        val scoringPolynomial : Result<Polynomials> = Polynomials.of(2, -218.942, 590.854, 1290.0)
         val ToFPolynomial : Result<Polynomials> = Polynomials.of(2,0.06903, -0.05319, 0.25993)
     }
 }
