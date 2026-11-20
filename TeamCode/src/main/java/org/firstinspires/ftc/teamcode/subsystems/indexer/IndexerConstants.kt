@@ -4,6 +4,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.utils.configurations.OpMotorExConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.genericConfigurations.GenericMotorConfiguration
+import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorPercentageModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.devices.configurations.motorControlModeConfiguration.MotorVelocityModeConfiguration
 import org.firstinspires.ftc.teamcode.utils.sensors.ColorSensorConfig
 import org.firstinspires.ftc.teamcode.utils.sensors.DetectedColor
@@ -32,11 +33,11 @@ object IndexerConstants {
             Identification.TOP_COLOR_SENSOR_ID,
             gain = 2.0f,
             ledEnabled = true,
-            minSaturation = 0.350f,
-            minValue = 0.020f,
+            minSaturation = 0.0f,
+            minValue = 0.0f,
             hueRanges = mapOf(
                 DetectedColor.RED to HueRange(0.0f, 20.0f),
-                DetectedColor.YELLOW to HueRange(92.49489f, 20.0f),
+                DetectedColor.YELLOW to HueRange(90.44566f, 15.0f),
                 DetectedColor.BLUE to HueRange(220.0f, 20.0f)
             )
         )
@@ -49,7 +50,7 @@ object IndexerConstants {
             minValue = 0.0f,
             hueRanges = mapOf(
                 DetectedColor.RED to HueRange(123.73f, 2.0f),
-                DetectedColor.YELLOW to HueRange(135.8507f, 12.0f),
+                DetectedColor.YELLOW to HueRange(135.8507f, 8.0f),
                 DetectedColor.BLUE to HueRange(176.84209f, 5.0f)
             )
         )
@@ -61,13 +62,13 @@ object IndexerConstants {
             minSaturation = 0.0f,
             minValue = 0.0f,
             hueRanges = mapOf(
-                DetectedColor.RED to HueRange(54.999985f, 12.0f),
-                DetectedColor.YELLOW to HueRange(109.11291f, 12.0f),
-                DetectedColor.RED to HueRange(193.47691f, 12.0f)
+                DetectedColor.RED to HueRange(54.999985f, 2.0f),
+                DetectedColor.YELLOW to HueRange(109.11291f, 8.0f),
+                DetectedColor.RED to HueRange(193.47691f, 8.0f)
             )
         )
 
-        val REQUIRED_DETECTION_TIME_CONSISTENCY_FOR_INDEXER_FULL = Time(1.0)
+        val REQUIRED_DETECTION_TIME_CONSISTENCY_FOR_INDEXER_FULL = Time(1.5)
     }
 
     object Configuration {

@@ -6,6 +6,7 @@ import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.util.MathUtils
+import com.seattlesolvers.solverslib.util.get
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
@@ -13,6 +14,7 @@ import org.firstinspires.ftc.teamcode.utils.devices.OpServoEx
 import org.firstinspires.ftc.teamcode.utils.units.Angle
 import org.firstinspires.ftc.teamcode.utils.units.Distance
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import java.util.function.Supplier
 import kotlin.math.abs
 
@@ -117,9 +119,18 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     fun setHoodCalculatedAngle(flywheelDistanceToTarget: Supplier<Distance>): Command {
+        return setHoodCompensatingAngleCalculatedAngle(flywheelDistanceToTarget) { AngularVelocity(0.0) }
+    }
+
+    fun setHoodCompensatingAngleCalculatedAngle(flywheelDistanceToTarget: Supplier<Distance>, rpmDrop: Supplier<AngularVelocity>): Command {
         return RunCommand({
             val hoodCalculatedAngle = getCalculatedHoodScoringAngle(flywheelDistanceToTarget.get())
-            setHoodCalculatedAngle(hoodCalculatedAngle).run()
+            val rpmDropCoerced = rpmDrop.get().rpm.coerceAtLeast(0.0)
+            val compensationDeg = rpmDropCoerced * HoodConstants.Control.DEGREES_PER_RPM_LOST.degrees
+
+            val compensatedAngle = Angle.fromDegrees(hoodCalculatedAngle.degrees + compensationDeg)
+
+            setHoodCalculatedAngle(compensatedAngle).run()
         }, this)
     }
 
@@ -129,7 +140,7 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
      */
     private fun getCalculatedHoodScoringAngle(flywheelDistanceToTarget: Distance): Angle {
         val distanceInMeters = flywheelDistanceToTarget.meters
-        val calculatedAngle = HoodConstants.StoredPolynomials.hoodAnglePolynomial.getOrThrow().evaluate(distanceInMeters)
+        val calculatedAngle = HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.get(distanceInMeters)
 
         return Angle.fromDegrees(calculatedAngle)
     }
@@ -155,10 +166,6 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         hoodServo = OpServoEx(hardwareMap, HoodConstants.Identification.HOOD_SERVO_ID)
         hoodServo.applyConfiguration(HoodConstants.Configuration.hoodServoConfiguration)
 
-//        for (point in HoodConstants.Interpolation.SCORING_POINTS_LIST) {
-//            HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(point.key.meters, point.value.degrees)
-//        }
-//
-//        HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
+        HoodConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
     }
 }

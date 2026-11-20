@@ -46,10 +46,10 @@ class Turret(private val hardwareMap: HardwareMap): SubsystemBase() {
     /** Runs every cycle */
     override fun periodic() {
         turretAngle = readEncoderAngle()
-
-        if (configurableTurretAngle.degrees.equals(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES).not()) {
-            updateTurretConfigurableAngle(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)
-        }
+//
+//        if (configurableTurretAngle.degrees.equals(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES).not()) {
+//            updateTurretConfigurableAngle(SubsystemConfigurableTargets.TURRET_CONFIGURABLE_DEGREES)
+//        }
     }
 
     private fun Angle.correctTurretZero(): Angle {

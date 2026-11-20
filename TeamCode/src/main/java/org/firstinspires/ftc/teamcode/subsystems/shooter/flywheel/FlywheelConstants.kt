@@ -25,18 +25,15 @@ object FlywheelConstants {
     }
 
     object Interpolation {
-        val SCORING_POINTS_LIST: Map<Distance, AngularVelocity> = mapOf(
-            Distance.fromMeters(0.75) to AngularVelocity.fromRpm(1700.0),
-            Distance.fromMeters(1.00) to AngularVelocity.fromRpm(1750.0),
-            Distance.fromMeters(1.25) to AngularVelocity.fromRpm(1770.0),
-            Distance.fromMeters(1.50) to AngularVelocity.fromRpm(1830.0),
-        )
-
-        val SCORING_HIVE_INTERPOLATED_LUT = InterpLUT()
+        val SCORING_HIVE_INTERPOLATED_LUT: InterpLUT = InterpLUT()
+            .add(0.75, 1700.0)
+            .add(1.00, 1710.0)
+            .add(1.25, 1770.0)
+            .add(1.50, 1810.0)
     }
 
     object Configuration {
-        private const val INVERTED = false
+        private const val INVERTED = true
 
         private const val MAX_POWER = 1.0
 

@@ -31,9 +31,9 @@ class FlowerDropDown(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /** Runs every cycle */
     override fun periodic() {
-        if (configurableFlowerDropDownAngle.degrees.equals(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES).not()) {
-            updateFlowerDropDownConfigurableAngle(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES)
-        }
+//        if (configurableFlowerDropDownAngle.degrees.equals(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES).not()) {
+//            updateFlowerDropDownConfigurableAngle(SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES)
+//        }
     }
 
     /** Updates [configurableFlowerDropDownAngle] with the value of [SubsystemConfigurableTargets.INTAKE_DEPLOY_CONFIGURABLE_DEGREES]*/

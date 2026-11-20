@@ -32,9 +32,9 @@ class FlywheelHardStop(hardwareMap: HardwareMap): SubsystemBase() {
     }
 
     override fun periodic() {
-        if (configurableFlywheelHardStopAngle.degrees.equals(SubsystemConfigurableTargets.FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE).not()) {
-            updateFlywheelHardStopConfigurableAngle(SubsystemConfigurableTargets.FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE)
-        }
+//        if (configurableFlywheelHardStopAngle.degrees.equals(SubsystemConfigurableTargets.FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE).not()) {
+//            updateFlywheelHardStopConfigurableAngle(SubsystemConfigurableTargets.FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE)
+//        }
     }
 
     private fun updateFlywheelHardStopConfigurableAngle(newFlywheelHardStopConfigurableAngleDegrees: Double) {

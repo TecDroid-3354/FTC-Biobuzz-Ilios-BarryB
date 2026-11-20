@@ -7,15 +7,15 @@ import com.seattlesolvers.solverslib.command.RunCommand
 import com.seattlesolvers.solverslib.command.SubsystemBase
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import com.seattlesolvers.solverslib.command.InstantCommand
-import com.seattlesolvers.solverslib.controller.PIDController
+import com.seattlesolvers.solverslib.hardware.motors.Motor
 import com.seattlesolvers.solverslib.util.Debouncer
 import com.seattlesolvers.solverslib.util.MathUtils
 import org.firstinspires.ftc.teamcode.constants.SubsystemConfigurableTargets
-import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains.FLYWHEEL_MOTOR_PID
 import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains.FLYWHEEL_MOTOR_FEEDFORWARD
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import org.firstinspires.ftc.teamcode.utils.controllers.BangBangController
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
 import org.firstinspires.ftc.teamcode.utils.units.Distance
@@ -26,13 +26,22 @@ import kotlin.math.abs
 
 class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Supplier<Voltage>): SubsystemBase() {
 
+    private companion object {
+        /**
+         * Fraction of the feedforward applied alongside the bang-bang output.
+         * Slightly under 1.0 (WPILib recommends 0.9) so the feedforward alone never
+         * pushes the flywheel past the setpoint, letting bang-bang handle the final approach.
+         */
+        const val FEEDFORWARD_SCALE = 0.9
+    }
+
     private lateinit var flywheelMotor: OpMotorEx
 
     private var flywheelTargetVelocity: AngularVelocity = AngularVelocity()
 
     private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity()
 
-    private val flywheelController: PIDController = PIDController(FLYWHEEL_MOTOR_PID.p, FLYWHEEL_MOTOR_PID.i, FLYWHEEL_MOTOR_PID.d)
+    private val bangBangController: BangBangController = BangBangController()
 
     private var flywheelFeedforward: SimpleMotorFeedforward = FLYWHEEL_MOTOR_FEEDFORWARD
 
@@ -45,13 +54,6 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
 
     /** Runs every cycle */
     override fun periodic() {
-        // Update PID
-        if (flywheelController.p != FLYWHEEL_MOTOR_PID.p
-            || flywheelController.i != FLYWHEEL_MOTOR_PID.i
-            || flywheelController.d != FLYWHEEL_MOTOR_PID.d) {
-            flywheelController.setPID(FLYWHEEL_MOTOR_PID.p, FLYWHEEL_MOTOR_PID.i, FLYWHEEL_MOTOR_PID.d)
-        }
-
         // Update Feedforward
         if (flywheelFeedforward.ks != FLYWHEEL_MOTOR_FEEDFORWARD.ks
             || flywheelFeedforward.kv != FLYWHEEL_MOTOR_FEEDFORWARD.kv) {
@@ -63,22 +65,25 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
             updateFlywheelConfigurableVelocity(SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM)
         }
 
-        // Don't move if the target is greater than 0.
-        if (flywheelTargetVelocity.rpm > 0.0) {
-            // Calculate feedforward
-            val feedforward = flywheelFeedforward.calculate(flywheelTargetVelocity.rpm)
-            // Calculate PID
-            val pid = flywheelController.calculate(-flywheelMotor.getVelocity().get().rpm, flywheelTargetVelocity.rpm)
-            // Add them both
-            val nominalPower = pid + feedforward
-            // Calculate voltage factor compensation
-            val voltageFactor = 12.0 / voltage.get().volts
-            // Calculate voltage
-            val compensation = nominalPower * voltageFactor
+        // Motor is mounted reversed, so the measured velocity is negated to be positive when spinning up.
+        val measuredRpm = flywheelMotor.getVelocity().get().rpm
+        val targetRpm = flywheelTargetVelocity.rpm
 
-            flywheelMotor.setPower(compensation)
+        // Always update the controller so its measurement/setpoint (and atSetpoint()) stay current.
+        // Returns 1.0 when below the setpoint, otherwise 0.0.
+        val bangBangOutput = bangBangController.calculate(measuredRpm, targetRpm)
+
+        // Don't move if the target is not greater than 0.
+        if (targetRpm > 0.0) {
+            // Feedforward holds the flywheel near the setpoint, scaled so it never overshoots on its own.
+            val feedforward = flywheelFeedforward.calculate(targetRpm) * FEEDFORWARD_SCALE
+            // Compensate only the feedforward for battery sag (bang-bang is already full power).
+            val voltageFactor = 12.0 / voltage.get().volts
+            // Bang-bang (0 or 1) + compensated feedforward, never negative so the motor never brakes or reverses.
+            val power = MathUtils.clamp(bangBangOutput + feedforward * voltageFactor, 0.0, 1.0)
+
+            flywheelMotor.setPower(power)
         } else {
-            flywheelController.reset()
             flywheelMotor.setPower(0.0)
         }
     }
@@ -179,7 +184,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
     }
 
     fun getRPMDrop(): AngularVelocity {
-        return flywheelTargetVelocity.plus(flywheelMotor.getVelocity().get())
+        return flywheelTargetVelocity.minus(flywheelMotor.getVelocity().get())
     }
 
     /**
@@ -188,11 +193,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
     fun getIsAtTarget(): Boolean {
         if (flywheelTargetVelocity < FlywheelConstants.Mechanical.VELOCITY_TARGET_THRESHOLD) return false
 
-        val isWithinTolerance =  abs(
-            (flywheelTargetVelocity.rpm.minus(-flywheelMotor.getVelocity().get().rpm))
-        ) < SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm
-
-        return atTargetDebouncer.calculate(isWithinTolerance)
+        return atTargetDebouncer.calculate(bangBangController.atSetpoint())
     }
 
     // Logs useful values
@@ -200,7 +201,9 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
         telemetry.addLine("Flywheel")
         telemetry.addData("Flywheel Lead Motor Connected", flywheelMotor.getIsConnected().asBoolean)
         telemetry.addData("Flywheel Target Velocity RPM", flywheelTargetVelocity.rpm)
-        telemetry.addData("Flywheel Velocity RPM", -flywheelMotor.getVelocity().get().rpm)
+        telemetry.addData("Flywheel Velocity RPM", flywheelMotor.getVelocity().get().rpm)
+        telemetry.addData("Flywheel Error RPM", bangBangController.getError())
+        telemetry.addData("Flywheel BangBang Tolerance RPM", bangBangController.getTolerance())
         telemetry.addData("At target", getIsAtTarget())
     }
 
@@ -209,11 +212,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
         flywheelMotor = OpMotorEx(hardwareMap, FlywheelConstants.Identification.FLYWHEEL_LEAD_MOTOR_ID)
         flywheelMotor.applyConfigurationAndResetEncoder(FlywheelConstants.Configuration.leadMotorConfiguration)
 
-        flywheelController.setTolerance(SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm)
-
-        for ((key, value) in FlywheelConstants.Interpolation.SCORING_POINTS_LIST) {
-            FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.add(key.meters, value.rpm)
-        }
+        bangBangController.setTolerance(SubsystemTolerances.FLYWHEEL_RPM_TOLERANCE.rpm)
 
         FlywheelConstants.Interpolation.SCORING_HIVE_INTERPOLATED_LUT.createLUT()
     }

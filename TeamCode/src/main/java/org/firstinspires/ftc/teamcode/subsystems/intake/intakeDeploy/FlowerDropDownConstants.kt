@@ -20,7 +20,7 @@ object FlowerDropDownConstants {
         private const val LEAD_SERVO_INVERTED = false
         private const val FOLLOWER_SERVO_INVERTED = true
 
-        val servoRange = Angle(0.0)..Angle(180.0)
+        val servoRange = Angle.fromDegrees(0.0)..Angle.fromDegrees(90.0)
 
         val leadServoConfiguration = ServoPositionModeConfiguration()
             .withInverted(LEAD_SERVO_INVERTED)

@@ -20,7 +20,7 @@ object DriveMultipliers {
 
 // TODO edit tolerances if needed
 object SubsystemTolerances {
-    val FLYWHEEL_RPM_TOLERANCE = AngularVelocity.fromRpm(50.0)
+    val FLYWHEEL_RPM_TOLERANCE = AngularVelocity.fromRpm(60.0)
     val FLYWHEEL_HARD_STOP_ANGLE_TOLERANCE = Angle.fromDegrees(30.0)
     val HOOD_ANGLE_TOLERANCE = Angle.fromDegrees(1.0)
     val DROP_DOWN_ANGLE_TOLERANCE = Angle.fromDegrees(1.0)
@@ -46,15 +46,16 @@ object SubsystemPresetTargets {
     // Intake Rollers Preset RPM Targets //
     val INTAKE_ROLLERS_FLOOR_RPM = AngularVelocity.fromRpm(1800.0)
     val INTAKE_ROLLERS_FLOWER_RPM = AngularVelocity.fromRpm(1800.0)
+    val INTAKE_ROLLERS_IDLE_RPM = AngularVelocity.fromRpm(500.0)
     val INTAKE_ROLLERS_REVERSED_RPM = AngularVelocity.fromRpm(-200.0)
 
     // Intake Deploy Preset Angle Targets //
-    val DROP_DOWN_FLOOR_ANGLE = Angle.fromDegrees(90.0)
-    val DROP_DOWN_FLOWER_ANGLE = Angle.fromDegrees(0.0)
+    val DROP_DOWN_FLOOR_ANGLE = Angle.fromDegrees(0.0)
+    val DROP_DOWN_FLOWER_ANGLE = Angle.fromDegrees(90.0)
 
     // Shooter Preset RPM Targets //
-    val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(900.0)
-    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(2000.0)
+    val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(1500.0)
+    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1605.0)
 
     // Hood Preset Angle Targets //
     val HOOD_PRESET_ANGLE = Angle.fromDegrees(20.0)
@@ -64,13 +65,13 @@ object SubsystemPresetTargets {
     val TURRET_HOME_ANGLE = Angle.fromDegrees(180.0)
 
     // Indexer Preset RPM Targets //
-    val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1900.0)
-    val INDEXER_PRESET_IDLE_RPM = AngularVelocity.fromRpm(1450.0)
-    val INDEXER_REVERSED_RPM = AngularVelocity.fromRpm(-400.0)
+    val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1350.0)
+    val INDEXER_PRESET_IDLE_RPM = AngularVelocity.fromRpm(1000.0)
+    val INDEXER_REVERSED_RPM = AngularVelocity.fromRpm(-600.0)
 
     // Flywheel Hard Stop Preset Angle Targets //
     val FLYWHEEL_HARD_STOP_CLEARING_ANGLE = Angle.fromDegrees(180.0)
-    val FLYWHEEL_HARD_STOP_BLOCKING_ANGLE = Angle.fromDegrees(120.0)
+    val FLYWHEEL_HARD_STOP_BLOCKING_ANGLE = Angle.fromDegrees(125.0)
 }
 
 @Configurable
@@ -119,15 +120,14 @@ object SubsystemControlGains {
 
     // Shooter PID and Feedforward Configurables //
     @JvmField
-    var FLYWHEEL_MOTOR_PID = PIDCoefficients(-0.21, 0.0, 0.0)
+    // P = -0.47 kV = -0.656 SP = -0.28
+    var FLYWHEEL_MOTOR_PID = PIDCoefficients(0.0025, 0.0, 0.0)
     @JvmField
-    var SLOWING_FLYWHEEL_MOTOR_PID = PIDCoefficients(-0.12, 0.0, 0.0)
-    @JvmField
-    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, -0.765, 0.0)
+    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 0.00006, 0.0)
 
     // Indexer PID and Feedforward Configurables //
     @JvmField
     var INDEXER_MOTOR_PID = PIDCoefficients(-0.1, 0.0, 0.0)
     @JvmField
-    var INDEXER_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, -1.015, 0.0)
+    var INDEXER_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, -1.0, 0.0)
 }

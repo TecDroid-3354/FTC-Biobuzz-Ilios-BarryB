@@ -43,8 +43,8 @@ abstract class TecDroidRobot(hardwareMap: HardwareMap): Robot() {
             hub.clearBulkCache()
         }
         CommandScheduler.getInstance().run()
-        OpMotorEx.updateAll()
-        OpServoEx.updateAll()
-        loop()
+        //OpMotorEx.updateAll()
+        //OpServoEx.updateAll()
+        //loop()
     }
 }

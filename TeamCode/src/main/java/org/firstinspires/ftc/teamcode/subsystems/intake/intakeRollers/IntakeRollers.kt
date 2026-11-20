@@ -35,14 +35,14 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
     /** Runs every cycle */
     override fun periodic() {
-        if (leadIntakeRollersMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID)
-            || leadIntakeRollersMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)) {
-            updateIntakeRollersControlGains(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID, SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)
-        }
-
-        if (configurableIntakeRollersVelocity.rpm.equals(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM).not()) {
-            updateIntakeRollersConfigurableVelocity(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM)
-        }
+//        if (leadIntakeRollersMotor.hadVelocityPIDControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID)
+//            || leadIntakeRollersMotor.hadVelocityFeedforwardControlGainsUpdated(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)) {
+//            updateIntakeRollersControlGains(SubsystemControlGains.INTAKE_ROLLERS_MOTOR_PID, SubsystemControlGains.INTAKE_ROLLERS_MOTOR_FEEDFORWARD)
+//        }
+//
+//        if (configurableIntakeRollersVelocity.rpm.equals(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM).not()) {
+//            updateIntakeRollersConfigurableVelocity(SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM)
+//        }
     }
 
     /** Updates [configurableIntakeRollersVelocity] with the value of [SubsystemConfigurableTargets.INTAKE_ROLLERS_CONFIGURABLE_RPM] */
@@ -90,6 +90,19 @@ class IntakeRollers(private val hardwareMap: HardwareMap): SubsystemBase() {
 
             leadIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM)
             followerIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM)
+        }
+    }
+
+    /**
+     * Enables the rollers with the [SubsystemPresetTargets.INTAKE_ROLLERS_FLOWER_RPM] value.
+     * @return a [Runnable] which enables the rollers with the given velocity.
+     */
+    fun enableIntakeRollersIdleVelocity(): Runnable {
+        return {
+            intakeRollersTargetVelocity = SubsystemPresetTargets.INTAKE_ROLLERS_IDLE_RPM
+
+            leadIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_IDLE_RPM)
+            followerIntakeRollersMotor.setVelocity(SubsystemPresetTargets.INTAKE_ROLLERS_IDLE_RPM)
         }
     }
 

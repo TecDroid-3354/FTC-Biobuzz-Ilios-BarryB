@@ -67,7 +67,7 @@ class OpMotorEx(hardwareMap: HardwareMap, motorId: String) {
      * Constructs a new [AngularVelocity] value and returns it
      * @return the current motor's velocity
      */
-    fun getVelocity(): Supplier<AngularVelocity> { return { AngularVelocity(motor.velocity / countPerRev / reduction) } }
+    fun getVelocity(): Supplier<AngularVelocity> { return { AngularVelocity(motor.correctedVelocity / countPerRev / reduction) } }
     /**
      * @return the motor's set power
      */

@@ -86,11 +86,11 @@ class Mecanum(
         }
 
         // Update angle controller
-        if (angleController.kP != SubsystemControlGains.MECANUM_ANGLE_PID.p
-            || angleController.kI != SubsystemControlGains.MECANUM_ANGLE_PID.i
-            || angleController.kD != SubsystemControlGains.MECANUM_ANGLE_PID.d) {
-            angleController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
-        }
+//        if (angleController.kP != SubsystemControlGains.MECANUM_ANGLE_PID.p
+//            || angleController.kI != SubsystemControlGains.MECANUM_ANGLE_PID.i
+//            || angleController.kD != SubsystemControlGains.MECANUM_ANGLE_PID.d) {
+//            angleController = PIDController(SubsystemControlGains.MECANUM_ANGLE_PID.p, SubsystemControlGains.MECANUM_ANGLE_PID.i, SubsystemControlGains.MECANUM_ANGLE_PID.d)
+//        }
     }
 
     /**
@@ -101,8 +101,8 @@ class Mecanum(
     fun driveFollowingScaledDriverInput(driveScalar: Optional<Double>, headingScalar: Optional<Double>): Command {
         return RunCommand({
             val fieldCentricDrive = ManualDrive.fieldCentric(
-                controller.leftX * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
-                -controller.leftY * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
+                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
                 -controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar.orElse(1.0),
                 follower.pose().heading()
             )
@@ -239,12 +239,14 @@ class Mecanum(
         return targetAngle
     }
 
-    fun getAngleFromSubsystemToTarget(fieldToTarget: Translation2d, subsystemPosition: Translation2d): Rotation2d {
-        val subsystemToTargetVector = fieldToTarget.minus(subsystemPosition)
+    /**
+     * @return the angle in radians
+     */
+    fun getAngleFromSubsystemToTarget(targetX: Double, targetY: Double, currentX: Double, currentY: Double): Double {
+        val subsystemToTargetX = targetX.minus(currentX)
+        val subsystemToTargetY = targetY.minus(currentY)
 
-        val targetAngle = Rotation2d(
-            atan2(subsystemToTargetVector.y, subsystemToTargetVector.x)
-        )
+        val targetAngle = atan2(subsystemToTargetY, subsystemToTargetX)
 
         return targetAngle
     }

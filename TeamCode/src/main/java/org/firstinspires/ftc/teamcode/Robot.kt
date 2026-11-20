@@ -4,7 +4,9 @@ import com.bylazar.telemetry.TelemetryManager
 import com.pedropathing.math.Pose
 import com.pedropathing.paths.Path
 import com.qualcomm.robotcore.hardware.HardwareMap
+import com.qualcomm.robotcore.hardware.VoltageSensor
 import com.seattlesolvers.solverslib.command.Command
+import com.seattlesolvers.solverslib.command.InstantCommand
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.systems.Superstructure
@@ -17,10 +19,11 @@ import org.firstinspires.ftc.teamcode.utils.extensions.onFalse
 import org.firstinspires.ftc.teamcode.utils.extensions.onTrue
 import org.firstinspires.ftc.teamcode.utils.extensions.rightBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
+import org.firstinspires.ftc.teamcode.utils.extensions.start
 import org.firstinspires.ftc.teamcode.utils.extensions.triangle
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
+import org.firstinspires.ftc.teamcode.utils.units.Voltage
 
-@Suppress("JoinDeclarationAndAssignment")
 class Robot(
     alliance: Alliance,
     hardwareMap: HardwareMap,
@@ -31,8 +34,10 @@ class Robot(
     /* Superstructure Declaration */
     private var superstructure: Superstructure
 
+    private val batterySensor: VoltageSensor = hardwareMap.voltageSensor.iterator().next()
+
     init {
-        superstructure = Superstructure(hardwareMap, controller, alliance, pTelemetry)
+        superstructure = Superstructure(hardwareMap, controller, alliance, pTelemetry, batterySensor)
     }
 
     override fun preAuto(command: Command) {
@@ -61,7 +66,7 @@ class Robot(
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
         // TODO Check why PoseStorage doesn't work
-        superstructure.setPose(Pose(70.75, 22.6, 0.0))
+        superstructure.setPose(Pose(8.5, 8.2, 0.0))
         superstructure.setDriveDefaultCommand()
 
         superstructure.setTurretDefaultCommand()
@@ -87,10 +92,8 @@ class Robot(
      */
     override fun printTelemetry(telemetryManager: TelemetryManager) {
         // Add here your telemetry. telemetryManager.addData("Name", variable)
-//        superstructure.logFlywheel()
-//        superstructure.logOdometry()
-//        superstructure.logIntakeRollers()
-        superstructure.logTurret()
+        superstructure.logFlywheel()
+        superstructure.logOdometry()
         telemetryManager.update()
     }
 
@@ -103,8 +106,10 @@ class Robot(
      * Write here your controller.button() commands.
      */
     override fun configureBindings() {
-//        controller.leftBumper()
-//            .whileTrue(superstructure.driveToNearestFlower())
+
+//        controller.circle()
+//            .onTrue(superstructure.setDropDownFlowerAngle())
+//            .onFalse(superstructure.setDropDownFloorAngle())
 //
 //        controller.dpadRight()
 //            .whileTrue(superstructure.driveToRightPark())
@@ -112,26 +117,20 @@ class Robot(
 //        controller.dpadLeft()
 //            .whileTrue(superstructure.driveToLeftPark())
 
-        controller.rightTrigger()
-            .onTrue(superstructure.setPresetScoringSequence().alongWith(superstructure.setControllerRumbleRepeated()))
-            .onFalse(superstructure.stopShootingSequence().alongWith(superstructure.stopControllerRumble()))
+        controller.start()
+            .onTrue(InstantCommand({ superstructure.setPose(Pose(8.5, 8.2, 0.0)) }))
 
         controller.leftTrigger()
-            .onTrue(superstructure.setDynamicFlywheelConfigurableVelocity())
-            .onFalse(superstructure.setDynamicFlywheelIdleVelocity())
+            .onTrue(superstructure.setConfigurableScoringSequence())//.alongWith(superstructure.setControllerRumbleRepeated()))
+            .onFalse(superstructure.stopShootingSequence())
 
-        controller.leftBumper()
-            .onTrue(superstructure.setHoodConfigurableControl())
 
-        controller.circle()
-            .onTrue(superstructure.setTurretConfigurableAngle())
+        controller.rightTrigger()
+            .onTrue(superstructure.setScoringSequence())//.alongWith(superstructure.setControllerRumbleRepeated()))
+            .onFalse(superstructure.stopShootingSequence())//.alongWith(superstructure.stopControllerRumble()))
 
         controller.rightBumper()
             .whileTrue(superstructure.setFloorIntakeSequence())
             .onFalse(superstructure.setIntakeIdle())
-
-        controller.triangle()
-            .onTrue(superstructure.setIntakeRollersConfigurableControl())
-            .onFalse(superstructure.stopIntakeRollers())
     }
 }
