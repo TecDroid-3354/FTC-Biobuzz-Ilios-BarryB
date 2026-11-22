@@ -80,7 +80,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
             // Compensate only the feedforward for battery sag (bang-bang is already full power).
             val voltageFactor = 12.0 / voltage.get().volts
             // Bang-bang (0 or 1) + compensated feedforward, never negative so the motor never brakes or reverses.
-            val power = MathUtils.clamp(bangBangOutput + feedforward * voltageFactor, 0.0, 1.0)
+            val power = MathUtils.clamp((bangBangOutput * voltageFactor) + feedforward , 0.0, 1.0)
 
             flywheelMotor.setPower(power)
         } else {

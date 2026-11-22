@@ -123,7 +123,7 @@ object SubsystemControlGains {
     // P = -0.47 kV = -0.656 SP = -0.28
     var FLYWHEEL_MOTOR_PID = PIDCoefficients(0.0025, 0.0, 0.0)
     @JvmField
-    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 0.00006, 0.0)
+    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.005, 0.000362, 0.0)
 
     // Indexer PID and Feedforward Configurables //
     @JvmField
