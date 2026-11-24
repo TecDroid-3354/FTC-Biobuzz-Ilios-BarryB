@@ -22,7 +22,7 @@ object LimelightConstants {
          * Added to the reported age of a frame (ms). Starts at 0. Tune it so that position fixes taken while the
          * turret/robot is rotating stop being biased in the direction of rotation (see tuning notes).
          */
-        const val LATENCY_CALIBRATION_MS = 20.0
+        const val LATENCY_CALIBRATION_MS = 42.5
     }
 
     object Mechanical {

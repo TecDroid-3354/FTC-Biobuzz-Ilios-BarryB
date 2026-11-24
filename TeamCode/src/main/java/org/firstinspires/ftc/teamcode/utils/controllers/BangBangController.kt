@@ -101,7 +101,7 @@ class BangBangController(tolerance: Double = Double.POSITIVE_INFINITY) {
         this.measurementValue = measurement
         this.setpointValue = setpoint
 
-        return if (measurement < setpoint) 1.0 else 0.0
+        return if (measurement < setpoint) 0.75 else 0.0
     }
 
     /**

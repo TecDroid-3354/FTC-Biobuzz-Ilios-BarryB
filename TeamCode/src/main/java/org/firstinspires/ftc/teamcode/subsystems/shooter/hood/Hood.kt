@@ -122,6 +122,17 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         return setHoodCompensatingAngleCalculatedAngle(flywheelDistanceToTarget) { AngularVelocity(0.0) }
     }
 
+    fun setHoodPresetCompensatingAngle(rpmDrop: Supplier<AngularVelocity>): Command {
+        return RunCommand({
+            val rpmDropCoerced = rpmDrop.get().rpm.coerceAtLeast(0.0)
+            val compensatedDeg = rpmDropCoerced * HoodConstants.Control.DEGREES_PER_RPM_LOST.degrees
+
+            val compensatedAngle = Angle.fromDegrees(SubsystemPresetTargets.HOOD_PRESET_ANGLE.degrees + compensatedDeg)
+
+            setHoodCalculatedAngle(compensatedAngle).run()
+        })
+    }
+
     fun setHoodCompensatingAngleCalculatedAngle(flywheelDistanceToTarget: Supplier<Distance>, rpmDrop: Supplier<AngularVelocity>): Command {
         return RunCommand({
             val hoodCalculatedAngle = getCalculatedHoodScoringAngle(flywheelDistanceToTarget.get())

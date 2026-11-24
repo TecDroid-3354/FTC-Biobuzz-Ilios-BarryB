@@ -32,6 +32,16 @@ object FlywheelConstants {
             .add(1.50, 1810.0)
     }
 
+
+    object Control {
+        /**
+         * Fraction of the feedforward applied alongside the bang-bang output.
+         * Slightly under 1.0 (WPILib recommends 0.9) so the feedforward alone never
+         * pushes the flywheel past the setpoint, letting bang-bang handle the final approach.
+         */
+        const val FEEDFORWARD_SCALE = 0.94
+    }
+
     object Configuration {
         private const val INVERTED = true
 

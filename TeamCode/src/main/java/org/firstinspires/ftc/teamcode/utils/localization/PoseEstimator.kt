@@ -49,7 +49,9 @@ data class EstimatorConfig(
     val useGroupBelief: Boolean = true,
     val beliefDecay: Double = 0.97,               // forgets old evidence, so a structure that tips is noticed
     val beliefLimit: Double = 12.0,               // caps how sure we can be (log-likelihood ratio)
-    val beliefStepLimit: Double = 4.0             // caps how much one tag can move the belief
+    val beliefStepLimit: Double = 4.0,             // caps how much one tag can move the belief
+
+    val maxCameraYawRate: Double = 2.0   // rad/s; set to Double.POSITIVE_INFINITY during the latency test
 )
 
 class EstimatorStats {
@@ -60,6 +62,8 @@ class EstimatorStats {
     var outOfRangeTags = 0; internal set
     var lastMahalanobisSq = 0.0; internal set
     var lastHypothesisIndex = -1; internal set
+    var fastTurnFrames = 0; internal set
+
 }
 
 /** Result of [PoseEstimator.diagnose]: what one tag says the robot position is, under each possible tag placement. */
@@ -273,6 +277,7 @@ class PoseEstimator(
         val heading = lookedUpHeading
         val turret = lookedUpTurret
         val yawRate = cameraYawRate(t)
+        if (abs(yawRate) > config.maxCameraYawRate) { stats.fastTurnFrames++; return 0 }
 
         var usableCount = 0
         for (i in frame.tags.indices) {

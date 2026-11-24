@@ -111,7 +111,7 @@ class Superstructure(
             LocalizationConstants.mount, LocalizationConstants.biobuzzAprilTagDynamicMap, LocalizationConstants.estimatorConfig
         )
         // Mecanum Initialization
-        mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getServoAbsoluteAngle() }
+        mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getTurretAbsoluteAngle() }
         // Flower Dropdown Initialization
         //flowerDropDown = FlowerDropDown(hardwareMap)
         // Intake Rollers Initialization
@@ -306,8 +306,8 @@ class Superstructure(
         return setIndexerReversedPreset().andThen(ParallelCommandGroup(
             setFlywheelCalculatedVelocity(),
             toggleFlywheelEnabled(),
-            //setHoodCalculatedAngle(),
-            setHoodCalculatedCompensationAngle(),
+            setHoodCalculatedAngle(),
+            //setHoodCalculatedCompensationAngle(),
             WaitCommand(1000).andThen(stopIndexer()).andThen(
             WaitUntilCommand { isFlywheelAtTarget() }
                 .andThen(clearPathToFlywheel()
@@ -336,15 +336,19 @@ class Superstructure(
     }
 
     fun setPresetScoringSequence(): Command {
-        return ParallelCommandGroup(
-                setFlywheelPresetShootingVelocity(),
-                toggleFlywheelEnabled(),
-                setHoodPresetAngle()
-                    .andThen(WaitUntilCommand { isFlywheelAtTarget() })
-                    .andThen(clearPathToFlywheel())
+        return setIndexerReversedPreset().andThen(ParallelCommandGroup(
+            setFlywheelPresetShootingVelocity(),
+            toggleFlywheelEnabled(),
+            setHoodPresetAngle(),
+            WaitCommand(1000).andThen(stopIndexer()).andThen(
+                WaitUntilCommand { isFlywheelAtTarget() }
+                    .andThen(clearPathToFlywheel()
+                        .alongWith(setIndexerShootingPreset())
+                        .alongWith(setIntakeRollersFloorVelocity())
+                    )
                     .andThen(WaitCommand(500))
-                    .andThen(setIndexerShootingPreset())
-            )
+                    .andThen(stopIntakeRollers())
+            )))
     }
 
     /**
@@ -627,6 +631,10 @@ class Superstructure(
     /** Sets the [Hood] to its preset angle (90.0°) */
     fun setHoodPresetAngle(): Command {
         return hood.setHoodPresetAngle().InstantCommand(hood)
+    }
+
+    fun setHoodPresetCompensatedAngle(): Command {
+        return hood.setHoodPresetCompensatingAngle { flywheel.getRPMDrop() }
     }
 
     /** Enables the [Hood] with a calculated angle based on the virtual distance and the robot's radial velocity */

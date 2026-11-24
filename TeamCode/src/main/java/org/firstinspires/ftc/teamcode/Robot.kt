@@ -32,7 +32,7 @@ class Robot(
 ): TecDroidRobot(hardwareMap) {
 
     /* Superstructure Declaration */
-    private var superstructure: Superstructure
+    var superstructure: Superstructure
 
     private val batterySensor: VoltageSensor = hardwareMap.voltageSensor.iterator().next()
 
@@ -66,6 +66,7 @@ class Robot(
     override fun initTeleOp(autoEndPose: Pose) {
         // Chassis default command
         // TODO Check why PoseStorage doesn't work
+        // Filter tuning pose Pose(46.8, 22.7, -Math.PI / 2)
         superstructure.setPose(Pose(8.5, 8.2, 0.0))
         superstructure.setDriveDefaultCommand()
 
@@ -94,6 +95,7 @@ class Robot(
         // Add here your telemetry. telemetryManager.addData("Name", variable)
         superstructure.logFlywheel()
         superstructure.logOdometry()
+        superstructure.logTurret()
         telemetryManager.update()
     }
 

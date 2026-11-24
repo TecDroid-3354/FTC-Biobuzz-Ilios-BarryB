@@ -54,11 +54,11 @@ object SubsystemPresetTargets {
     val DROP_DOWN_FLOWER_ANGLE = Angle.fromDegrees(90.0)
 
     // Shooter Preset RPM Targets //
-    val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(1500.0)
-    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1605.0)
+    val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(1350.0)
+    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1800.0)
 
     // Hood Preset Angle Targets //
-    val HOOD_PRESET_ANGLE = Angle.fromDegrees(20.0)
+    val HOOD_PRESET_ANGLE = Angle.fromDegrees(23.0)
     val HOOD_HOME_ANGLE = Angle.fromDegrees(0.0)
 
     // Turret Preset Angle Targets //
@@ -123,7 +123,8 @@ object SubsystemControlGains {
     // P = -0.47 kV = -0.656 SP = -0.28
     var FLYWHEEL_MOTOR_PID = PIDCoefficients(0.0025, 0.0, 0.0)
     @JvmField
-    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.005, 0.000362, 0.0)
+    // 0.00037
+    var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 0.0001, 0.0)
 
     // Indexer PID and Feedforward Configurables //
     @JvmField

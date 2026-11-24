@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains.FLYWHEEL_M
 import org.firstinspires.ftc.teamcode.constants.SubsystemLimits
 import org.firstinspires.ftc.teamcode.constants.SubsystemPresetTargets
 import org.firstinspires.ftc.teamcode.constants.SubsystemTolerances
+import org.firstinspires.ftc.teamcode.subsystems.shooter.flywheel.FlywheelConstants.Control.FEEDFORWARD_SCALE
 import org.firstinspires.ftc.teamcode.utils.controllers.BangBangController
 import org.firstinspires.ftc.teamcode.utils.devices.OpMotorEx
 import org.firstinspires.ftc.teamcode.utils.units.AngularVelocity
@@ -25,15 +26,6 @@ import java.util.function.Supplier
 import kotlin.math.abs
 
 class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Supplier<Voltage>): SubsystemBase() {
-
-    private companion object {
-        /**
-         * Fraction of the feedforward applied alongside the bang-bang output.
-         * Slightly under 1.0 (WPILib recommends 0.9) so the feedforward alone never
-         * pushes the flywheel past the setpoint, letting bang-bang handle the final approach.
-         */
-        const val FEEDFORWARD_SCALE = 0.9
-    }
 
     private lateinit var flywheelMotor: OpMotorEx
 
@@ -80,7 +72,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
             // Compensate only the feedforward for battery sag (bang-bang is already full power).
             val voltageFactor = 12.0 / voltage.get().volts
             // Bang-bang (0 or 1) + compensated feedforward, never negative so the motor never brakes or reverses.
-            val power = MathUtils.clamp((bangBangOutput * voltageFactor) + feedforward , 0.0, 1.0)
+            val power = MathUtils.clamp((bangBangOutput /** voltageFactor*/) + (feedforward * voltageFactor) , 0.0, 1.0)
 
             flywheelMotor.setPower(power)
         } else {
