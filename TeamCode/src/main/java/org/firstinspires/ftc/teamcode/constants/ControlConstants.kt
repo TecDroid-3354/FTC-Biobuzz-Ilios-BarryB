@@ -54,18 +54,21 @@ object SubsystemPresetTargets {
     val DROP_DOWN_FLOWER_ANGLE = Angle.fromDegrees(90.0)
 
     // Shooter Preset RPM Targets //
+    val FLYWHEEL_IDLE_AUTO_RPM = AngularVelocity.fromRpm(1300.0)
     val FLYWHEEL_IDLE_RPM = AngularVelocity.fromRpm(1350.0)
-    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1800.0)
+    val FLYWHEEL_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1840.0)
+    val FLYWHEEL_PRESET_SHOOTING_AUTO_RPM = AngularVelocity.fromRpm(1810.0)
 
     // Hood Preset Angle Targets //
-    val HOOD_PRESET_ANGLE = Angle.fromDegrees(23.0)
+    val HOOD_AUTO_PRESET_ANGLE = Angle.fromDegrees(20.5)
+    val HOOD_PRESET_ANGLE = Angle.fromDegrees(21.0)
     val HOOD_HOME_ANGLE = Angle.fromDegrees(0.0)
 
     // Turret Preset Angle Targets //
     val TURRET_HOME_ANGLE = Angle.fromDegrees(180.0)
 
     // Indexer Preset RPM Targets //
-    val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1350.0)
+    val INDEXER_PRESET_SHOOTING_RPM = AngularVelocity.fromRpm(1400.0)
     val INDEXER_PRESET_IDLE_RPM = AngularVelocity.fromRpm(1000.0)
     val INDEXER_REVERSED_RPM = AngularVelocity.fromRpm(-600.0)
 
@@ -86,11 +89,11 @@ object SubsystemConfigurableTargets {
 
     // Shooter Configurable RPM Targets //
     @JvmField
-    var FLYWHEEL_CONFIGURABLE_RPM = 0.0
+    var FLYWHEEL_CONFIGURABLE_RPM = 1750.0
 
     // Hood Configurable Angle Targets //
     @JvmField
-    var HOOD_CONFIGURABLE_DEGREES = 0.0
+    var HOOD_CONFIGURABLE_DEGREES = 19.0
 
     // Turret Configurable Angle Targets //
     @JvmField
@@ -105,7 +108,6 @@ object SubsystemConfigurableTargets {
     var FLYWHEEL_HARD_STOP_CONFIGURABLE_ANGLE = 0.0
 }
 
-// TODO Tune everything
 @Configurable
 object SubsystemControlGains {
     // Mecanum Angle PID Controller //
@@ -123,7 +125,7 @@ object SubsystemControlGains {
     // P = -0.47 kV = -0.656 SP = -0.28
     var FLYWHEEL_MOTOR_PID = PIDCoefficients(0.0025, 0.0, 0.0)
     @JvmField
-    // 0.00037
+    // 0.0001 Base FF
     var FLYWHEEL_MOTOR_FEEDFORWARD = SimpleMotorFeedforward(0.0, 0.0001, 0.0)
 
     // Indexer PID and Feedforward Configurables //

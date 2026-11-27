@@ -25,9 +25,6 @@ dependencies {
     // Marrow
     implementation 'com.skeletonarmyftc.marrow:core:1.2.5'
 
-    // Dairy Core
-    //implementation("dev.frozenmilk.dairy:Core:2.2.4")
-
     // Panels Dashboard
     implementation "com.bylazar:fullpanels:1.0.20"
 }

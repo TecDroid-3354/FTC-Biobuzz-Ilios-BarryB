@@ -12,6 +12,10 @@ open class TeleOpMode(val alliance: Alliance): CommandOpMode() {
 
     override fun initialize() {
         super.reset()
+        // Diagnostic: verify PoseStorage before Robot/Follower is created
+        telemetry.addData("Loaded Auto Pose", PoseStorage.autonomousEndPose)
+        telemetry.update()
+
         controller = GamepadEx(gamepad1)
         robot = Robot(alliance, hardwareMap, controller, telemetry)
 
@@ -24,6 +28,7 @@ open class TeleOpMode(val alliance: Alliance): CommandOpMode() {
     }
 
     override fun preRun() {
+        PoseStorage.autonomousEndPose?.let { robot.superstructure.setPose(it) }
         robot.preTeleOp()
     }
 

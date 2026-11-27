@@ -29,28 +29,30 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
 
     private lateinit var flywheelMotor: OpMotorEx
 
-    private var flywheelTargetVelocity: AngularVelocity = AngularVelocity()
+    private var flywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
 
-    private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity()
+    private var configurableFlywheelTargetVelocity: AngularVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_RPM
 
     private val bangBangController: BangBangController = BangBangController()
 
-    private var flywheelFeedforward: SimpleMotorFeedforward = FLYWHEEL_MOTOR_FEEDFORWARD
+    var flywheelFeedforward: SimpleMotorFeedforward = FLYWHEEL_MOTOR_FEEDFORWARD
 
     private val atTargetDebouncer: Debouncer = Debouncer(0.06, Debouncer.DebounceType.Both)
 
     init {
         // Initialization code
         configureMotors()
+
+        flywheelMotor.setPower(0.65)
     }
 
     /** Runs every cycle */
     override fun periodic() {
         // Update Feedforward
-        if (flywheelFeedforward.ks != FLYWHEEL_MOTOR_FEEDFORWARD.ks
-            || flywheelFeedforward.kv != FLYWHEEL_MOTOR_FEEDFORWARD.kv) {
-            flywheelFeedforward = SimpleMotorFeedforward(FLYWHEEL_MOTOR_FEEDFORWARD.ks, FLYWHEEL_MOTOR_FEEDFORWARD.kv)
-        }
+//        if (flywheelFeedforward.ks != FLYWHEEL_MOTOR_FEEDFORWARD.ks
+//            || flywheelFeedforward.kv != FLYWHEEL_MOTOR_FEEDFORWARD.kv) {
+//            flywheelFeedforward = SimpleMotorFeedforward(FLYWHEEL_MOTOR_FEEDFORWARD.ks, FLYWHEEL_MOTOR_FEEDFORWARD.kv)
+//        }
 
         // Update configurable velocity
         if (configurableFlywheelTargetVelocity.rpm.equals(SubsystemConfigurableTargets.FLYWHEEL_CONFIGURABLE_RPM).not()) {
@@ -72,7 +74,7 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
             // Compensate only the feedforward for battery sag (bang-bang is already full power).
             val voltageFactor = 12.0 / voltage.get().volts
             // Bang-bang (0 or 1) + compensated feedforward, never negative so the motor never brakes or reverses.
-            val power = MathUtils.clamp((bangBangOutput /** voltageFactor*/) + (feedforward * voltageFactor) , 0.0, 1.0)
+            val power = MathUtils.clamp((bangBangOutput /** bangBangFactor*/) + (feedforward * voltageFactor) , 0.0, 1.0)
 
             flywheelMotor.setPower(power)
         } else {
@@ -97,6 +99,12 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
         }
     }
 
+    fun setFlywheelIdleAutoVelocity(): Runnable {
+        return {
+            flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_AUTO_RPM
+        }
+    }
+
     /**
      * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM] value.
      * @return an [Runnable] which enables the flywheel at the given velocity.
@@ -104,6 +112,16 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
     fun setFlywheelPresetShootingVelocity(): Runnable {
         return {
             flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM
+        }
+    }
+
+    /**
+     * Enables the flywheel with the [SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_RPM] value.
+     * @return an [Runnable] which enables the flywheel at the given velocity.
+     */
+    fun setFlywheelAutoPresetShootingVelocity(): Runnable {
+        return {
+            flywheelTargetVelocity = SubsystemPresetTargets.FLYWHEEL_PRESET_SHOOTING_AUTO_RPM
         }
     }
 

@@ -44,49 +44,23 @@ public class Constants {
             Optional.of(Distance.fromInches(-0.9259914788674183))
     );
 
-//    public static ForesightConfig foresightConfig = PedroPathing.INSTANCE.createForesightConfig(
-//            Optional.of(LinearVelocity.fromInps(73.70766256965302)),
-//            Optional.of(LinearVelocity.fromInps(50.95451912606664)),
-//            Optional.of(LinearVelocity.fromInps(66.2330040361729)),
-//            Optional.of(LinearVelocity.fromInps(98.1109111501078)),
-//            Optional.of(Vector2D.cartesian(0.052388621977635726, 0.007584251199523778)),
-//            Optional.of(Controller.proportional(4.899468912226798)),
-//            Optional.of(Matrix.diag(0.10488295618353324, 0.06963286700854306)),
-//            Optional.of(Matrix.diag(0.0015608973032158766, 0.0017147221775882472)),
-//            Optional.of(Controller.proportionalFeedforward(0.013414203480727744)),
-//            Optional.of(Controller.proportionalFeedforward(0.011402072958618581)),
-//            Optional.of(Controller.proportional(0.30204688451928496)),
-//            Optional.of(Controller.proportional(0.11159825298847863)),
-//            Optional.of(Controller.proportional(0.7294004144110938)),
-//            Optional.of(Controller.proportional(0.26949396318687474))
-//    );
-
-
-    public static ForesightConfig foresightConfig = new ForesightConfig(
-            c -> {
-                Controller primaryTranslationalForward = Controller.proportional(0.33275359262081344);
-                Controller secondaryTranslationalForward = Controller.proportional(0.12294356113364158);
-                Controller primaryTranslationalLateral = Controller.proportional(1.1030474512437447);
-                Controller secondaryTranslationalLateral = Controller.proportional(0.40754655926383654);
-
-                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
-                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
-
-                c.coast.set(Controller.proportionalFeedforward(0.01680604184983132));
-                c.brake.set(Controller.proportionalFeedforward(0.014285135572356621));
-
-                c.headingFeedback.set(Controller.proportional(6.965430836201905));
-                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.05454450607408763, 0.008230440165558498));
-
-                c.linearBrakeCoefficients.set(Matrix.diag(0.0849219900361919, 0.03309249752645619));
-                c.quadraticBrakeCoefficients.set(Matrix.diag(0.001950887222206796, 0.002387070752296738));
-
-                c.maxAchievableForwardVelocity.set(62.60724832870443);
-                c.maxAchievableStrafeVelocity.set(43.98435441220354);
-                c.naturalForwardDeceleration.set(34.11441584875012);
-                c.naturalStrafeDeceleration.set(94.25093018750059);
-            }
+    public static ForesightConfig foresightConfig = PedroPathing.INSTANCE.createForesightConfig(
+            Optional.of(LinearVelocity.fromInps(73.70766256965302)),
+            Optional.of(LinearVelocity.fromInps(50.95451912606664)),
+            Optional.of(LinearVelocity.fromInps(66.2330040361729)),
+            Optional.of(LinearVelocity.fromInps(98.1109111501078)),
+            Optional.of(Vector2D.cartesian(0.052388621977635726, 0.007584251199523778)),
+            Optional.of(Controller.proportional(4.899468912226798)),
+            Optional.of(Matrix.diag(0.10488295618353324, 0.06963286700854306)),
+            Optional.of(Matrix.diag(0.0015608973032158766, 0.0017147221775882472)),
+            Optional.of(Controller.proportionalFeedforward(0.013414203480727744)),
+            Optional.of(Controller.proportionalFeedforward(0.011402072958618581)),
+            Optional.of(Controller.proportional(0.30204688451928496)),
+            Optional.of(Controller.proportional(0.11159825298847863)),
+            Optional.of(Controller.proportional(0.7294004144110938)),
+            Optional.of(Controller.proportional(0.26949396318687474))
     );
+
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new Follower(
                 new PinpointLocalizer(hardwareMap, localizerConfig),

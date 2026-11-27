@@ -98,12 +98,12 @@ class Mecanum(
      * The axis get multiplied by each [MecanumConstants.Control] Multiplier and its respective alliance multiplier.
      * @return a [RunCommand] which set the [Follower]'s TeleOp drive to the [controller]'s axis.
      */
-    fun driveFollowingScaledDriverInput(driveScalar: Optional<Double>, headingScalar: Optional<Double>): Command {
+    fun driveFollowingScaledDriverInput(driveScalar: Double, headingScalar: Double): Command {
         return RunCommand({
             val fieldCentricDrive = ManualDrive.fieldCentric(
-                controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
-                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar.orElse(1.0),
-                -controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar.orElse(1.0),
+                controller.leftY * DriveMultipliers.FORWARD_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar,
+                controller.leftX * DriveMultipliers.LATERAL_VELOCITY_MULTIPLIER * alliance.multiplier * driveScalar,
+                -controller.rightX * DriveMultipliers.TURN_VELOCITY_MULTIPLIER * headingScalar,
                 follower.pose().heading()
             )
 
@@ -113,7 +113,7 @@ class Mecanum(
     }
 
     fun driveFollowingDriverInput(): Command {
-        return driveFollowingScaledDriverInput(Optional.empty(), Optional.empty())
+        return driveFollowingScaledDriverInput(1.0, 1.0)
     }
 
     fun driveFieldRelativeScaled(driveScalar: Optional<Double>): Command {
@@ -297,6 +297,7 @@ class Mecanum(
      */
     fun setPose(pose: Pose) {
         follower.setPose(pose)
+        follower.update()
         poseEstimator.resetPose()
         lastDrivePose = pose
     }

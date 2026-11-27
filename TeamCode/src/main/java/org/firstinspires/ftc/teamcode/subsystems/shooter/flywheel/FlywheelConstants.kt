@@ -26,10 +26,10 @@ object FlywheelConstants {
 
     object Interpolation {
         val SCORING_HIVE_INTERPOLATED_LUT: InterpLUT = InterpLUT()
-            .add(0.75, 1700.0)
-            .add(1.00, 1710.0)
-            .add(1.25, 1770.0)
-            .add(1.50, 1810.0)
+            .add(0.75, 1720.0 + 20.0) // Validated
+            .add(1.00, 1745.0 + 20.0) // Validated
+            .add(1.25, 1770.0 + 20.0)
+            .add(1.50, 1790.0 + 20.0)
     }
 
 

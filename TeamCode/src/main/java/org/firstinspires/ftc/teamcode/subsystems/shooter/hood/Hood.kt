@@ -67,6 +67,18 @@ class Hood(private val hardwareMap: HardwareMap): SubsystemBase() {
         }
     }
 
+    fun setHoodAutoPresetAngle(): Runnable {
+        return {
+            hoodTargetAngle = SubsystemPresetTargets.HOOD_AUTO_PRESET_ANGLE
+
+            hoodServo.setServoPosition(
+                transformHoodAngle(SubsystemPresetTargets.HOOD_AUTO_PRESET_ANGLE),
+                SubsystemLimits.HOOD_ANGLE_LIMITS,
+                1.0
+            )
+        }
+    }
+
     /**
      * Sets a new angle with the [SubsystemPresetTargets.HOOD_HOME_ANGLE] value.
      * @return a [Runnable] which sets the new hood angle.

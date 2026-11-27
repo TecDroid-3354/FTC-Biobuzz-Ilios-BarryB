@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opModes.calibration
 
 import com.qualcomm.hardware.limelightvision.Limelight3A
+import com.qualcomm.robotcore.eventloop.opmode.Disabled
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit
@@ -20,6 +21,7 @@ import org.firstinspires.ftc.teamcode.utils.localization.TagObservation
  *    wrong frame (x/y swapped or mirrored), wrong tag ID order, or wrong mount numbers.
  */
 @TeleOp(group = "Calibration", name = "Tag Map Check")
+@Disabled
 class TagMapCheck : LinearOpMode() {
     private val KNOWN_X = 70.75
     private val KNOWN_Y = 22.6

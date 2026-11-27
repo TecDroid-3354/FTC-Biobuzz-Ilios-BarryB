@@ -93,12 +93,12 @@ object Zones {
 
 object ScoringTargets {
     // Red scoring targets
-    val RED_HIVE_TOP_TARGET        = Pose(58.0, 82.0)
+    val RED_HIVE_TOP_TARGET        = Pose(58.0, 78.0)
     val RED_HIVE_BOTTOM_TARGET     = Pose(58.0, 58.0)
 
     // Blue scoring targets
-    val BLUE_HIVE_TOP_TARGET      = Pose(90.0, 82.0)
-    val BLUE_HIVE_BOTTOM_TARGET    = Pose(90.0, 58.0)
+    val BLUE_HIVE_TOP_TARGET      = Pose(84.0, 78.0)
+    val BLUE_HIVE_BOTTOM_TARGET    = Pose(84.0, 58.0)
 }
 
 object TurretTargets {
@@ -119,8 +119,8 @@ object FieldTargets {
 
     val FLOWER_LIST                     = listOf(RIGHT_FLOWER_INTAKE_POSITION, TOP_FLOWER_INTAKE_POSITION, LEFT_FLOWER_INTAKE_POSITION, BOTTOM_FLOWER_INTAKE_POSITION)
 
-    val BLUE_PARK_LEFT                  = Pose(91.0, 124.0, Math.PI / 2)
-    val BLUE_PARK_RIGHT                 = Pose(121.0, 124.0, Math.PI / 2)
-    val RED_PARK_LEFT                   = Pose(20.0, 14.0, 3 * Math.PI / 2)
-    val RED_PARK_RIGHT                  = Pose(52.0, 14.0, 3 * Math.PI / 2)
+    val BLUE_PARK_LEFT                  = Pose(130.0, 24.0, Math.PI)
+    val BLUE_PARK_RIGHT                 = Pose(130.0, 46.0  , Math.PI)
+    val RED_PARK_LEFT                   = Pose(20.0, 121.0, 0.0)
+    val RED_PARK_RIGHT                  = Pose(20.0, 100.0, 0.0)
 }

@@ -73,7 +73,7 @@ class Superstructure(
     // ------------------------------------------ //
     // --------- Subsystem Declaration ---------- //
     // ------------------------------------------ //
-    private lateinit var follower: Follower
+    lateinit var follower: Follower
     private lateinit var turret: Turret
     private lateinit var poseEstimator: PoseEstimator
     private lateinit var mecanum: Mecanum
@@ -81,14 +81,14 @@ class Superstructure(
     private lateinit var intakeRollers: IntakeRollers
     private lateinit var indexer: Indexer
     private lateinit var hood: Hood
-    private lateinit var flywheel: Flywheel
+    lateinit var flywheel: Flywheel
     private lateinit var flywheelHardStop: FlywheelHardStop
     private lateinit var limelight: Limelight
 
     // ---------------------------------------------------------------- //
     // - Useful variables (Velocities, distances and dynamic targets) - //
     // ---------------------------------------------------------------- //
-    private var robotToTurretPose: Pose2d = Pose2d()
+    var robotToTurretPose: Pose2d = Pose2d()
     private var robotZone = PolygonZone(RobotDimensions.ROBOT_WIDTH.inches, RobotDimensions.ROBOT_LENGTH.inches)
     private var turretDistanceToTarget: Distance = Distance(0.0)
     private var robotRadialVelocityToTarget: LinearVelocity = LinearVelocity(0.0)
@@ -96,6 +96,7 @@ class Superstructure(
     private var scoringTarget = Pose(0.0, 0.0)
     private var turretTarget = Pose(0.0, 0.0)
     private var shootingEnabled = false
+    private var dropDownFlower = false
 
     init {
         subsystemInitialization()
@@ -113,7 +114,7 @@ class Superstructure(
         // Mecanum Initialization
         mecanum = Mecanum(follower, controller, alliance)//, poseEstimator) { turret.getTurretAbsoluteAngle() }
         // Flower Dropdown Initialization
-        //flowerDropDown = FlowerDropDown(hardwareMap)
+        flowerDropDown = FlowerDropDown(hardwareMap)
         // Intake Rollers Initialization
         intakeRollers = IntakeRollers(hardwareMap)
         // Indexer Initialization
@@ -198,9 +199,9 @@ class Superstructure(
      * Called for shooting on the move.
      */
     fun setDriveSOTMCommand(): Command {
-        return mecanum.driveFieldRelativeScaled(
-            Optional.of(DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER)
-            //Optional.of(DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER)
+        return mecanum.driveFollowingScaledDriverInput(
+            DriveMultipliers.CONTROLLER_SOTM_LINEAR_MULTIPLIER,
+            DriveMultipliers.CONTROLLER_SOTM_ANGULAR_MULTIPLIER
         )
     }
 
@@ -210,13 +211,8 @@ class Superstructure(
      *  If called inside [org.firstinspires.ftc.teamcode.Robot.initTeleOp], pass the [PoseStorage.autonomousEndPose].
      *  No other uses will be required.
      */
-    fun setPose(pose: Pose?) {
-        mecanum.setPose(pose ?: Pose(0.0, 0.0, 0.0))
-    }
-
-    /** Sets the remembered autonomous pose to teleoperated */
-    fun setLastAutonomousPose() {
-        setPose(PoseStorage.autonomousEndPose)
+    fun setPose(pose: Pose) {
+        mecanum.setPose(pose)
     }
 
     fun followPathCommand(path: Path, holdEnd: Boolean, maxPower: Double): Command {
@@ -236,8 +232,12 @@ class Superstructure(
     }
 
     /** Checks whether the [Mecanum] is on the left side of the field. */
-    private fun isDriveOnTopSide(): BooleanSupplier {
+    fun isDriveOnTopSide(): BooleanSupplier {
         return { robotZone.isFullyInside(Zones.TOP_SIDE) }
+    }
+
+    fun isDriveReadyToEnableFlywheel(): BooleanSupplier {
+        return { robotZone.isInside(Zones.TOP_SIDE) }
     }
 
     /** Based on the robot's position on the field (left/right side) returns the current scoring target. */
@@ -303,20 +303,27 @@ class Superstructure(
      * is cleared by the [FlywheelHardStop] and the [Indexer] is enabled. Allows SOTM.
      */
     fun setScoringSequence(): Command {
-        return setIndexerReversedPreset().andThen(ParallelCommandGroup(
-            setFlywheelCalculatedVelocity(),
-            toggleFlywheelEnabled(),
-            setHoodCalculatedAngle(),
-            //setHoodCalculatedCompensationAngle(),
-            WaitCommand(1000).andThen(stopIndexer()).andThen(
-            WaitUntilCommand { isFlywheelAtTarget() }
-                .andThen(clearPathToFlywheel()
-                    .alongWith(setIndexerShootingPreset())
-                    .alongWith(setIntakeRollersFloorVelocity())
+        return setIndexerReversedPreset().andThen(
+            ParallelCommandGroup(
+                setDriveSOTMCommand(),
+                setFlywheelCalculatedVelocity(),
+                toggleFlywheelEnabled(),
+                setHoodCalculatedAngle(),
+                WaitCommand(1000)
+                    .andThen(stopIndexer())
+                    .andThen(WaitUntilCommand { isFlywheelAtTarget() }
+                    .andThen(
+                        ParallelCommandGroup(
+                            clearPathToFlywheel(),
+                            setIndexerShootingPreset(),
+                            setIntakeRollersFloorVelocity()
+                        )
+                    )
+                    .andThen(WaitCommand(500))
+                    .andThen(stopIntakeRollers())
                 )
-                .andThen(WaitCommand(500))
-                .andThen(stopIntakeRollers())
-        )))
+            )
+        )
     }
 
     fun setConfigurableScoringSequence(): Command {
@@ -351,6 +358,26 @@ class Superstructure(
             )))
     }
 
+    fun setAutoScoringSequence(): Command {
+        return SequentialCommandGroup(
+            setIndexerReversedPreset().andThen(ParallelCommandGroup(
+                setFlywheelAutoPresetShootingVelocity(),
+                toggleFlywheelEnabled(),
+                setHoodAutoPresetAngle(),
+                WaitCommand(1000).andThen(stopIndexer()).andThen(
+                    WaitUntilCommand { isFlywheelAtTarget() }
+                        .andThen(clearPathToFlywheel()
+                            .alongWith(setIndexerShootingPreset())
+                            .alongWith(setIntakeRollersFloorVelocity())
+                        )
+                        .andThen(WaitCommand(500))
+                        .andThen(stopIntakeRollers())
+                ))),
+            WaitCommand(1300),
+            stopAutoShootingSequence()
+        )
+    }
+
     /**
      * A [ParallelCommandGroup] which stops the [Flywheel], [Indexer], moves the [Hood] to its home
      * position and the [FlywheelHardStop]blocks the pathway.
@@ -366,28 +393,35 @@ class Superstructure(
         )
     }
 
+    fun stopAutoShootingSequence(): Command {
+        return ParallelCommandGroup(
+            stopFlywheel(),
+            toggleFlywheelEnabled(),
+            setHoodHomeAngle(),
+            stopIndexer(),
+            blockPathToFlywheel(),
+            stopIntakeRollers()
+        )
+    }
+
     /**
      * A [ParallelCommandGroup] which sets the [FlowerDropDown] angle to intake from the floor, once it has
      * reached its target, the [IntakeRollers] will be enabled. The [Indexer] is enabled simultaneously
      * with a minimum velocity.
      */
-    fun setFloorIntakeSequence(): Command {
+    fun setIntakeSequence(): Command {
         return ParallelCommandGroup(
-            //setDropDownFloorAngle(),
+            ConditionalCommand(setDropDownFlowerAngle(), setDropDownFloorAngle()) { dropDownFlower },
             setIntakeRollersFloorVelocity(),
             indexOnDetection { getIntakeDetectedColor() == DetectedColor.YELLOW }
         )
     }
 
-    /**
-     * A [ParallelCommandGroup] which sets the [FlowerDropDown] angle to intake from the flower, once it has
-     * reached its target, the [IntakeRollers] will be enabled with their target velocity.
-     * The [Indexer] is enabled simultaneously with a minimum velocity.
-     * The [Hood] is driven to its max position if scoring in the flower is desired.
-     * The [Turret]'s target angle becomes zero, to score inside the flower.
-     */
-    fun setFlowerIntakeSequence(): Command {
-        return ParallelCommandGroup()
+    fun toggleAndIntakeSequence(): Command {
+        return SequentialCommandGroup(
+            toggleDropDownBehavior(),
+            setIntakeSequence()
+        )
     }
 
     /**
@@ -396,7 +430,7 @@ class Superstructure(
      */
     fun setIntakeIdle(): Command {
         return ParallelCommandGroup(
-            //setDropDownFloorAngle(),
+            setDropDownFloorAngle(),
             stopIntakeRollers()
         )
     }
@@ -495,6 +529,10 @@ class Superstructure(
         return flowerDropDown.setFlowerDropDownFlowerAngle().InstantCommand(flowerDropDown)
     }
 
+    fun toggleDropDownBehavior(): Command {
+        return InstantCommand({ dropDownFlower = dropDownFlower.not() })
+    }
+
     /** Returns whether the [FlowerDropDown] has reached its angle target */
     fun isDropDownAtTarget(): Boolean {
         return flowerDropDown.getIsAtTarget()
@@ -567,8 +605,16 @@ class Superstructure(
         return flywheel.setFlywheelIdleVelocity().InstantCommand(flywheel)
     }
 
+    fun setFlywheelIdleAutoVelocity(): Command {
+        return flywheel.setFlywheelIdleAutoVelocity().InstantCommand(flywheel)
+    }
+
     fun setFlywheelPresetShootingVelocity(): Command {
         return flywheel.setFlywheelPresetShootingVelocity().InstantCommand(flywheel)
+    }
+
+    fun setFlywheelAutoPresetShootingVelocity(): Command {
+        return flywheel.setFlywheelAutoPresetShootingVelocity().InstantCommand(flywheel)
     }
 
     /** Enables the [Flywheel] with a calculated velocity based on the virtual distance and the robot's radial velocity */
@@ -633,6 +679,10 @@ class Superstructure(
         return hood.setHoodPresetAngle().InstantCommand(hood)
     }
 
+    fun setHoodAutoPresetAngle(): Command {
+        return hood.setHoodAutoPresetAngle().InstantCommand(hood)
+    }
+
     fun setHoodPresetCompensatedAngle(): Command {
         return hood.setHoodPresetCompensatingAngle { flywheel.getRPMDrop() }
     }
@@ -657,7 +707,7 @@ class Superstructure(
 
     /** Sets the turret default command, which targets the hive depending on the field zone the robot's in. */
     fun setTurretDefaultCommand() {
-        Trigger { getIndexerFull() || shootingEnabled }
+        Trigger { shootingEnabled }
             .whileTrue(setTurretCalculatedAngleSequence())
             .onFalse(setTurretHomeAngle())
     }
@@ -711,7 +761,10 @@ class Superstructure(
 
     /** Returns a [Runnable] which assigns [PoseStorage.autonomousEndPose] the [Follower]'s last value. Call [Runnable.run] for correct working */
     fun onEnd(): Runnable {
-        return { PoseStorage.autonomousEndPose = mecanum.getPose() }
+        return Runnable {
+            val p = mecanum.getPose()
+            PoseStorage.autonomousEndPose = Pose(p.x(), p.y(), p.heading())
+        }
     }
 
     // --------------- ----- -------- --------------- //
@@ -745,7 +798,6 @@ class Superstructure(
         turret.log(telemetryM)
     }
 
-    // Superstructure_2.kt
     fun logOdometry() {
         val pose = mecanum.getPose()
         telemetryM.addLine("Odometry")
@@ -754,10 +806,7 @@ class Superstructure(
         telemetryM.addData("Heading Deg", Math.toDegrees(pose.heading()))
         telemetryM.addData("Target X", scoringTarget.x())
         telemetryM.addData("Target Y", scoringTarget.y())
-        telemetryM.addData("Accepted Tags", poseEstimator.stats.acceptedTags)
-        telemetryM.addData("Gated Tags", poseEstimator.stats.gatedTags)
-        telemetryM.addData("Radial Velocity", robotRadialVelocityToTarget.mps)
-        telemetryM.addData("Tangential Velocity", robotTangentialVelocityToTarget.mps)
         telemetryM.addData("Distance to target", turretDistanceToTarget.meters)
+        PoseStorage.autonomousEndPose?.let { telemetryM.addData("End Pose", it) }
     }
 }

@@ -7,12 +7,20 @@ import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.VoltageSensor
 import com.seattlesolvers.solverslib.command.Command
 import com.seattlesolvers.solverslib.command.InstantCommand
+import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward
 import com.seattlesolvers.solverslib.gamepad.GamepadEx
 import org.firstinspires.ftc.robotcore.external.Telemetry
+import org.firstinspires.ftc.teamcode.constants.SubsystemControlGains
 import org.firstinspires.ftc.teamcode.systems.Superstructure
 import org.firstinspires.ftc.teamcode.utils.Alliance
 import org.firstinspires.ftc.teamcode.utils.TecDroidRobot
+import org.firstinspires.ftc.teamcode.utils.autonomous.PoseStorage
 import org.firstinspires.ftc.teamcode.utils.extensions.circle
+import org.firstinspires.ftc.teamcode.utils.extensions.cross
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadDown
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadLeft
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadRight
+import org.firstinspires.ftc.teamcode.utils.extensions.dpadUp
 import org.firstinspires.ftc.teamcode.utils.extensions.leftBumper
 import org.firstinspires.ftc.teamcode.utils.extensions.leftTrigger
 import org.firstinspires.ftc.teamcode.utils.extensions.onFalse
@@ -22,6 +30,7 @@ import org.firstinspires.ftc.teamcode.utils.extensions.rightTrigger
 import org.firstinspires.ftc.teamcode.utils.extensions.start
 import org.firstinspires.ftc.teamcode.utils.extensions.triangle
 import org.firstinspires.ftc.teamcode.utils.extensions.whileTrue
+import org.firstinspires.ftc.teamcode.utils.extensions.y
 import org.firstinspires.ftc.teamcode.utils.units.Voltage
 
 class Robot(
@@ -49,6 +58,8 @@ class Robot(
      * Initialize auto commands and set STARTING pose.
      */
     override fun initAuto(startingPose: Pose) {
+        superstructure.setTurretDefaultCommand()
+        superstructure.setFlywheelIdleVelocity().schedule()
         superstructure.setPose(startingPose)
     }
 
@@ -59,17 +70,14 @@ class Robot(
      * Runs once before the main loop of the robot [loop]
      */
     override fun preTeleOp() {
-        superstructure.preTeleop().run()
+        //superstructure.preTeleop().run()
     }
 
     /* Initialize your teleop controller commands here */
+    // Robot.kt
     override fun initTeleOp(autoEndPose: Pose) {
-        // Chassis default command
-        // TODO Check why PoseStorage doesn't work
-        // Filter tuning pose Pose(46.8, 22.7, -Math.PI / 2)
-        superstructure.setPose(Pose(8.5, 8.2, 0.0))
+        superstructure.setPose(autoEndPose)
         superstructure.setDriveDefaultCommand()
-
         superstructure.setTurretDefaultCommand()
 
         // Configure Control Bindings
@@ -95,7 +103,6 @@ class Robot(
         // Add here your telemetry. telemetryManager.addData("Name", variable)
         superstructure.logFlywheel()
         superstructure.logOdometry()
-        superstructure.logTurret()
         telemetryManager.update()
     }
 
@@ -108,31 +115,38 @@ class Robot(
      * Write here your controller.button() commands.
      */
     override fun configureBindings() {
-
-//        controller.circle()
-//            .onTrue(superstructure.setDropDownFlowerAngle())
-//            .onFalse(superstructure.setDropDownFloorAngle())
-//
-//        controller.dpadRight()
-//            .whileTrue(superstructure.driveToRightPark())
-//
-//        controller.dpadLeft()
-//            .whileTrue(superstructure.driveToLeftPark())
-
         controller.start()
-            .onTrue(InstantCommand({ superstructure.setPose(Pose(8.5, 8.2, 0.0)) }))
+            .onTrue(InstantCommand({ superstructure.setPose(Pose(8.5, 8.2, Math.PI)) }))
 
-        controller.leftTrigger()
+        controller.dpadRight()
+            .whileTrue(superstructure.driveToRightPark())
+
+        controller.dpadLeft()
+            .whileTrue(superstructure.driveToLeftPark())
+
+        controller.dpadUp()
+            .onTrue(superstructure.toggleFlywheelEnabled())
+
+        controller.dpadDown()
+            .onTrue(InstantCommand({ superstructure.flywheel.flywheelFeedforward = SimpleMotorFeedforward(0.0, 0.00015) } ))
+
+        controller.triangle()
+            .onTrue(superstructure.toggleDropDownBehavior())
+
+        controller.cross()
             .onTrue(superstructure.setConfigurableScoringSequence())//.alongWith(superstructure.setControllerRumbleRepeated()))
             .onFalse(superstructure.stopShootingSequence())
 
+        controller.rightBumper()
+            .whileTrue(superstructure.setIntakeSequence())
+            .onFalse(superstructure.setIntakeIdle())
 
         controller.rightTrigger()
             .onTrue(superstructure.setScoringSequence())//.alongWith(superstructure.setControllerRumbleRepeated()))
             .onFalse(superstructure.stopShootingSequence())//.alongWith(superstructure.stopControllerRumble()))
 
-        controller.rightBumper()
-            .whileTrue(superstructure.setFloorIntakeSequence())
-            .onFalse(superstructure.setIntakeIdle())
+        controller.leftTrigger()
+            .onTrue(superstructure.setPresetScoringSequence())//.alongWith(superstructure.setControllerRumbleRepeated()))
+            .onFalse(superstructure.stopShootingSequence())
     }
 }

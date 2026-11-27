@@ -25,9 +25,9 @@ object HoodConstants {
     object Interpolation {
         val SCORING_HIVE_INTERPOLATED_LUT: InterpLUT = InterpLUT()
             .add(0.75, 15.0)
-            .add(1.00, 16.0)
-            .add(1.25, 17.0 - 1.0)
-            .add(1.50, 23.0 - 1.0)
+            .add(1.00, 17.0)
+            .add(1.25, 21.0)
+            .add(1.50, 23.0)
     }
 
     object Configuration {
