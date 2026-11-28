@@ -215,6 +215,13 @@ class Superstructure(
         mecanum.setPose(pose)
     }
 
+    fun resetAllianceAccordingPose(): Command {
+        return ConditionalCommand(
+            InstantCommand({ setPose(Pose(8.5, 8.2, Math.PI)) }),
+            InstantCommand({ setPose(Pose(133.0, 133.3, 0.0)) })
+        ) { alliance == Alliance.RED }
+    }
+
     fun followPathCommand(path: Path, holdEnd: Boolean, maxPower: Double): Command {
         return mecanum.followPathCMD(path, holdEnd, maxPower)
     }

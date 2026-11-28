@@ -116,7 +116,7 @@ class Robot(
      */
     override fun configureBindings() {
         controller.start()
-            .onTrue(InstantCommand({ superstructure.setPose(Pose(8.5, 8.2, Math.PI)) }))
+            .onTrue(superstructure.resetAllianceAccordingPose())
 
         controller.dpadRight()
             .whileTrue(superstructure.driveToRightPark())

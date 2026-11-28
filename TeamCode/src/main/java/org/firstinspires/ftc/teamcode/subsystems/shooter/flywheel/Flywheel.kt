@@ -29,9 +29,9 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
 
     private lateinit var flywheelMotor: OpMotorEx
 
-    private var flywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
+    private var flywheelTargetVelocity: AngularVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_RPM
 
-    private var configurableFlywheelTargetVelocity: AngularVelocity = SubsystemPresetTargets.FLYWHEEL_IDLE_RPM
+    private var configurableFlywheelTargetVelocity: AngularVelocity = AngularVelocity(0.0)
 
     private val bangBangController: BangBangController = BangBangController()
 
@@ -42,8 +42,6 @@ class Flywheel(private val hardwareMap: HardwareMap, private val voltage: Suppli
     init {
         // Initialization code
         configureMotors()
-
-        flywheelMotor.setPower(0.65)
     }
 
     /** Runs every cycle */
